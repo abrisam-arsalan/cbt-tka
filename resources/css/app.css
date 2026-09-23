@@ -1,0 +1,130 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+/*
+ * Tema CBT TKA Sekolah.
+ * Mobile-first: palet dan ukuran disetel untuk layar HP siswa.
+ */
+@theme {
+    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+        'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol';
+
+    --color-brand-50: #eef2ff;
+    --color-brand-100: #e0e7ff;
+    --color-brand-200: #c7d2fe;
+    --color-brand-300: #a5b4fc;
+    --color-brand-400: #818cf8;
+    --color-brand-500: #6366f1;
+    --color-brand-600: #4f46e5;
+    --color-brand-700: #4338ca;
+    --color-brand-800: #3730a3;
+    --color-brand-900: #312e81;
+    --color-brand-950: #1e1b4b;
+
+    --color-success-50: #ecfdf5;
+    --color-success-100: #d1fae5;
+    --color-success-500: #10b981;
+    --color-success-600: #059669;
+    --color-success-700: #047857;
+
+    --color-warning-50: #fffbeb;
+    --color-warning-100: #fef3c7;
+    --color-warning-500: #f59e0b;
+    --color-warning-600: #d97706;
+    --color-warning-700: #b45309;
+
+    --color-danger-50: #fef2f2;
+    --color-danger-100: #fee2e2;
+    --color-danger-500: #ef4444;
+    --color-danger-600: #dc2626;
+    --color-danger-700: #b91c1c;
+}
+
+@layer base {
+    html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+
+    body {
+        /* Mencegah efek "pull to refresh" di HP saat siswa mengerjakan ujian. */
+        overscroll-behavior-y: none;
+    }
+
+    /* iOS Safari memperbesar halaman otomatis bila font input < 16px. */
+    input,
+    select,
+    textarea,
+    button {
+        font-family: inherit;
+        font-size: 1rem;
+    }
+
+    a,
+    button,
+    label {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Target sentuh minimal 44px sesuai panduan aksesibilitas mobile. */
+    button:not(.btn-sm),
+    [role='button']:not(.btn-sm) {
+        min-height: 2.75rem;
+    }
+}
+
+/* Area aman untuk notch/home-indicator pada bottom navigation. */
+@utility safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@utility safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+}
+
+/*
+ * Kartu ujian (cetak massal).
+ * Ukuran A6 lanskap agar muat 4 kartu per lembar A4.
+ */
+@utility exam-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid var(--color-slate-300);
+    border-radius: 0.75rem;
+    background: #fff;
+}
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 8mm;
+    }
+
+    html,
+    body {
+        background: #fff !important;
+        height: auto !important;
+        overscroll-behavior: auto;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .print-only {
+        display: block !important;
+    }
+
+    .print-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6mm;
+    }
+
+    a[href]::after {
+        content: '';
+    }
+}

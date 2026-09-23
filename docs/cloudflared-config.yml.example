@@ -1,0 +1,21 @@
+# ============================================================
+# Cloudflare Tunnel untuk CBT TKA Sekolah
+# Letakkan di C:\Users\<user>\.cloudflared\config.yml
+# ============================================================
+#
+# Langkah setup:
+#   1. cloudflared.exe tunnel login
+#   2. cloudflared.exe tunnel create cbt-tka
+#   3. cloudflared.exe tunnel route dns cbt-tka cbt.sekolahanda.sch.id
+#   4. Ganti <TUNNEL_ID> di bawah dengan UUID dari langkah 2
+#   5. cloudflared.exe service install   (jalankan sebagai Windows Service)
+
+tunnel: <TUNNEL_ID>
+credentials-file: C:\Users\<user>\.cloudflared\<TUNNEL_ID>.json
+
+# Origin service di server lokal.
+# Sesuaikan port dengan nginx/apache Anda (biasanya 80).
+ingress:
+  - hostname: cbt.sekolahanda.sch.id
+    service: http://localhost:80
+  - service: http_status:404

@@ -1,0 +1,123 @@
+<?php
+
+use App\Http\Controllers\Admin\AntiCheatLogController;
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\CardController;
+use App\Http\Controllers\Admin\ClassController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ExamController;
+use App\Http\Controllers\Admin\HubController;
+use App\Http\Controllers\Admin\ImportController;
+use App\Http\Controllers\Admin\MonitoringController;
+use App\Http\Controllers\Admin\ParticipantController;
+use App\Http\Controllers\Admin\QuestionController;
+use App\Http\Controllers\Admin\QuestionTemplateController;
+use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\UserController;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Route Admin (prefix /admin, name prefix admin.)
+|--------------------------------------------------------------------------
+|
+| Grup ini dibungkus auth + role:admin karena bootstrap hanya menambahkan
+| prefix dan name. Tanpa pembungkusan ini seluruh halaman admin terbuka
+| untuk siswa yang login.
+*/
+
+Route::middleware(['auth', 'role:admin', 'throttle:admin'])->group(function () {
+
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+    // ------------------------------------------------------------------
+    // Menu top-level sidebar (hub / overview)
+    // ------------------------------------------------------------------
+
+    // Bank soal -> daftar ujian sebagai pintu masuk.
+    Route::get('bank-soal', [HubController::class, 'bankSoal'])->name('questions.index');
+
+    // Impor data soal -> daftar ujian sebagai pintu masuk.
+    Route::get('import', [HubController::class, 'importSoal'])->name('import.index');
+
+    // Cetak kartu -> daftar ujian sebagai pintu masuk.
+    Route::get('kartu', [HubController::class, 'cards'])->name('cards.index');
+
+    // Peserta -> daftar ujian sebagai pintu masuk.
+    Route::get('peserta', [HubController::class, 'peserta'])->name('participants.index');
+
+    // Monitoring global (semua attempt berjalan lintas ujian).
+    Route::get('monitoring', [HubController::class, 'monitoring'])->name('monitoring.index');
+
+    // Hasil ujian global.
+    Route::get('hasil', [HubController::class, 'hasil'])->name('results.index');
+
+    // Log aktivitas (alias ke audit log).
+    Route::get('log-aktivitas', [AuditLogController::class, 'index'])->name('logs.index');
+
+    // Manajemen user (admin + siswa)
+    Route::resource('users', UserController::class)->except(['show']);
+
+    // Manajemen kelas
+    Route::resource('classes', ClassController::class)->except(['show']);
+
+    // Ujian + aksi transisi status
+    Route::resource('exams', ExamController::class);
+    Route::post('exams/{exam}/aktifkan', [ExamController::class, 'activate'])->name('exams.activate');
+    Route::post('exams/{exam}/jeda', [ExamController::class, 'pause'])->name('exams.pause');
+    Route::post('exams/{exam}/lanjutkan', [ExamController::class, 'resume'])->name('exams.resume');
+    Route::post('exams/{exam}/tutup', [ExamController::class, 'close'])->name('exams.close');
+    Route::post('exams/{exam}/tutup-submit', [ExamController::class, 'closeAndAutoSubmit'])
+        ->name('exams.close-auto-submit');
+
+    // Bank soal (per ujian)
+    Route::resource('exams.questions', QuestionController::class)->except(['show']);
+
+    // Peserta ujian + generate/regenerate token
+    Route::resource('exams.participants', ParticipantController::class)->only(['index', 'store', 'destroy']);
+    Route::post('exams/{exam}/participants/generate-token', [ParticipantController::class, 'generateTokens'])
+        ->name('exams.participants.generate-tokens');
+    Route::post('exams/{exam}/participants/{participant}/regenerate-token', [ParticipantController::class, 'regenerateToken'])
+        ->name('exams.participants.regenerate-token');
+    Route::post('exams/{exam}/participants/bulk', [ParticipantController::class, 'bulk'])
+        ->name('exams.participants.bulk');
+
+    // Kartu ujian
+    Route::get('exams/{exam}/kartu', [CardController::class, 'index'])->name('exams.cards.index');
+    Route::get('exams/{exam}/kartu/cetak', [CardController::class, 'print'])->name('exams.cards.print');
+
+    // Monitoring ujian berlangsung (per ujian)
+    Route::get('exams/{exam}/monitoring', [MonitoringController::class, 'index'])->name('exams.monitoring.index');
+    Route::post('exams/{exam}/monitoring/{attempt}/perpanjang', [MonitoringController::class, 'extend'])
+        ->name('exams.monitoring.extend');
+    Route::post('exams/{exam}/monitoring/{attempt}/buka', [MonitoringController::class, 'unlock'])
+        ->name('exams.monitoring.unlock');
+    Route::post('exams/{exam}/monitoring/{attempt}/reset-warning', [MonitoringController::class, 'resetWarnings'])
+        ->name('exams.monitoring.reset-warnings');
+    Route::post('exams/{exam}/monitoring/{attempt}/submit-paksa', [MonitoringController::class, 'forceSubmit'])
+        ->name('exams.monitoring.force-submit');
+
+    // Log anti-cheat
+    Route::get('anti-cheat', [AntiCheatLogController::class, 'index'])->name('anti-cheat.index');
+    Route::get('anti-cheat/{attempt}', [AntiCheatLogController::class, 'show'])->name('anti-cheat.show');
+
+    // Template soal (download bawaan + manajemen template tersimpan)
+    Route::get('template-soal/unduh/{type}', [QuestionTemplateController::class, 'download'])->name('templates.download');
+    Route::resource('templates', QuestionTemplateController::class)->except(['show']);
+
+    // Import soal (per ujian)
+    Route::get('exams/{exam}/impor', [ImportController::class, 'show'])->name('exams.import.show');
+    Route::post('exams/{exam}/impor/pratinjau', [ImportController::class, 'preview'])
+        ->middleware('throttle:import')
+        ->name('exams.import.preview');
+    Route::post('exams/{exam}/impor/eksekusi', [ImportController::class, 'execute'])
+        ->middleware('throttle:import')
+        ->name('exams.import.execute');
+
+    // Pengaturan sistem
+    Route::get('pengaturan', [SettingController::class, 'index'])->name('settings.index');
+    Route::put('pengaturan', [SettingController::class, 'update'])->name('settings.update');
+
+    // Audit log (read-only)
+    Route::get('audit-log', [AuditLogController::class, 'index'])->name('audit-logs.index');
+});

@@ -1,0 +1,30 @@
+# ============================================================
+# Apache vhost untuk CBT TKA Sekolah (Windows, mod_php)
+# Letakkan di C:\Apache24\conf\extra\httpd-vhosts.conf
+# ============================================================
+
+<VirtualHost *:80>
+    ServerName cbt.sekolahanda.sch.id
+    ServerAlias localhost
+
+    DocumentRoot "C:/cbt-tka/public"
+    <Directory "C:/cbt-tka/public">
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+
+        # Laravel front controller.
+        <IfModule mod_rewrite.c>
+            RewriteEngine On
+            RewriteCond %{REQUEST_FILENAME} !-d
+            RewriteCond %{REQUEST_FILENAME} !-f
+            RewriteRule ^ index.php [L]
+        </IfModule>
+    </Directory>
+
+    ErrorLog "C:/Apache24/logs/cbt-tka.error.log"
+    CustomLog "C:/Apache24/logs/cbt-tka.access.log" common
+
+    # Import soal bisa sampai 5MB.
+    LimitRequestBody 20971520
+</VirtualHost>

@@ -1,0 +1,48 @@
+# ============================================================
+# Nginx untuk CBT TKA Sekolah (Windows)
+# Letakkan di C:\nginx\conf\conf.d\cbt-tka.conf
+# PHP diproses lewat php-cgi di 127.0.0.1:9000
+# ============================================================
+
+server {
+    listen 80;
+    server_name cbt.sekolahanda.sch.id localhost;
+
+    root C:/cbt-tka/public;
+    index index.php;
+
+    # Ukuran unggah cukup untuk import soal (maks 5MB di app) + margin.
+    client_max_body_size 20m;
+
+    # Log
+    access_log C:/nginx/logs/cbt-tka.access.log;
+    error_log  C:/nginx/logs/cbt-tka.error.log;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # File statis: tidak perlu melewati PHP.
+    location ~* \.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)$ {
+        expires 7d;
+        add_header Cache-Control "public";
+        try_files $uri =404;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_pass   127.0.0.1:9000;
+        fastcgi_index  index.php;
+        fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+
+        # Timeout lebih longgar untuk HDD + import soal.
+        fastcgi_read_timeout 300;
+
+        include fastcgi_params;
+    }
+
+    # Blokir akses langsung ke file sensitif.
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
