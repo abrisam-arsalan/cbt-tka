@@ -22,6 +22,7 @@ class DashboardController extends Controller
 
         $exams = Exam::query()
             ->whereIn('id', $examIds)
+            ->where(fn ($q) => $q->whereNull('class_id')->orWhere('class_id', $user->class_id))
             ->withCount(['questions' => fn ($q) => $q->where('is_active', true)])
             ->orderByDesc('start_at')
             ->orderByDesc('id')

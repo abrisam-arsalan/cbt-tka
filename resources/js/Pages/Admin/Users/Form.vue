@@ -71,14 +71,6 @@ const submit = () => {
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-sm font-semibold text-slate-700">Role</label>
-                    <select v-model="form.role" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm">
-                        <option v-for="option in roleOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-                    </select>
-                    <p v-if="form.errors.role" class="mt-1 text-xs text-danger-600">{{ form.errors.role }}</p>
-                </div>
-
-                <div v-if="form.role === 'siswa'">
                     <label class="mb-1 block text-sm font-semibold text-slate-700">Kelas</label>
                     <select v-model="form.class_id" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm">
                         <option value="">— Tanpa Kelas —</option>

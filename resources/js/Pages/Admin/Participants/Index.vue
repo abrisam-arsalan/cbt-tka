@@ -6,11 +6,12 @@ const props = defineProps({
     title: String,
     exam: Object,
     participants: { type: Array, default: () => [] },
+    classes: { type: Array, default: () => [] },
     availableUsers: { type: Array, default: () => [] },
 });
 
 const addForm = useForm({ user_id: '' });
-const bulkForm = useForm({ user_ids: [] });
+const bulkForm = useForm({ class_id: '' });
 
 const addOne = () => {
     addForm.post(route('admin.exams.participants.store', props.exam.id), {
@@ -19,10 +20,11 @@ const addOne = () => {
 };
 
 const bulkAdd = () => {
-    if (bulkForm.user_ids.length === 0) {
-        alert('Pilih minimal satu siswa.');
+    if (!bulkForm.class_id) {
+        alert('Pilih kelas terlebih dahulu.');
         return;
     }
+    if (!confirm('Tambahkan seluruh siswa kelas ini sebagai peserta beserta token ujiannya?')) return;
     bulkForm.post(route('admin.exams.participants.bulk', props.exam.id), {
         onSuccess: () => bulkForm.reset(),
     });
@@ -42,11 +44,6 @@ const destroy = (participant) => {
     router.delete(route('admin.exams.participants.destroy', { exam: props.exam.id, participant: participant.id }));
 };
 
-const toggleUser = (userId) => {
-    const index = bulkForm.user_ids.indexOf(userId);
-    if (index === -1) bulkForm.user_ids.push(userId);
-    else bulkForm.user_ids.splice(index, 1);
-};
 </script>
 
 <template>
@@ -77,19 +74,25 @@ const toggleUser = (userId) => {
                 </button>
             </div>
 
-            <details class="mb-2">
-                <summary class="cursor-pointer text-sm font-semibold text-slate-700">Tambah massal</summary>
-                <div class="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
-                    <label v-for="user in availableUsers" :key="user.id" class="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-slate-50">
-                        <input type="checkbox" class="h-4 w-4" :checked="bulkForm.user_ids.includes(user.id)" @change="toggleUser(user.id)" />
-                        {{ user.label }}
-                    </label>
-                    <p v-if="availableUsers.length === 0" class="p-2 text-sm text-slate-400">Semua siswa sudah terdaftar.</p>
+            <div class="border-t border-slate-100 pt-3">
+                <p class="mb-2 text-sm font-semibold text-slate-700">Tambah massal per kelas</p>
+                <div class="flex gap-2">
+                    <select v-model="bulkForm.class_id" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                        <option value="">— pilih kelas —</option>
+                        <option v-for="cls in classes" :key="cls.id" :value="cls.id" :disabled="cls.unregistered_count === 0">
+                            {{ cls.name }} — {{ cls.unregistered_count }} dari {{ cls.students_count }} siswa belum terdaftar
+                        </option>
+                    </select>
+                    <button
+                        class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                        :disabled="bulkForm.processing || !bulkForm.class_id"
+                        @click="bulkAdd"
+                    >
+                        {{ bulkForm.processing ? 'Menambahkan...' : 'Tambah' }}
+                    </button>
                 </div>
-                <button class="mt-2 rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700" :disabled="bulkForm.processing" @click="bulkAdd">
-                    Tambahkan Terpilih
-                </button>
-            </details>
+                <p v-if="classes.length === 0" class="mt-2 text-sm text-slate-400">Belum ada kelas. Buat kelas terlebih dahulu (mis. 7A, 7B, ...).</p>
+            </div>
         </div>
 
         <!-- Tabel peserta -->

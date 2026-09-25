@@ -3,16 +3,16 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <meta name="theme-color" content="#4f46e5">
+        <meta name="theme-color" content="#ea580c">
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
         <meta name="robots" content="noindex, nofollow">
 
-        <title inertia>{{ config('app.name', 'CBT TKA Sekolah') }}</title>
+        <title inertia>{{ config('app.name', 'Panglima CBT') }}</title>
 
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
+        <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
 
         @routes
         @vite(['resources/css/app.css', 'resources/js/app.js'])

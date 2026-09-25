@@ -8,7 +8,7 @@ defineProps({
     typeOptions: { type: Array, default: () => [] },
 });
 
-const btnPrimarySm = 'bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
+const btnPrimarySm = 'bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
 
 const statusClass = (status) => ({
     draft: 'bg-gray-100 text-gray-600',
@@ -25,10 +25,10 @@ const statusClass = (status) => ({
         <h2 class="mb-1 text-xl font-bold text-gray-900">Impor Soal</h2>
         <p class="mb-4 text-sm text-gray-500">
             Pilih ujian tujuan, lalu unggah file CSV / XLSX. Unduh template format kolom terlebih dahulu dari menu
-            <Link :href="route('admin.templates.index')" class="font-medium text-blue-700 hover:underline">Template &amp; Format</Link>.
+            <Link :href="route('admin.templates.index')" class="font-medium text-brand-700 hover:underline">Template &amp; Format</Link>.
         </p>
 
-        <div class="mb-4 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+        <div class="mb-4 rounded-xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-800">
             Tipe soal yang didukung:
             <span v-for="(option, index) in typeOptions" :key="option.value">
                 {{ option.label }}<span v-if="index < typeOptions.length - 1">, </span>

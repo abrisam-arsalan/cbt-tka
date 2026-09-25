@@ -35,7 +35,7 @@ onMounted(() => {
                 <div class="mb-2 flex items-center justify-between">
                     <div>
                         <p class="text-sm font-bold text-slate-800">{{ card.school_name }}</p>
-                        <p class="text-xs text-slate-500">Kartu Ujian</p>
+                        <p class="text-xs text-slate-500">{{ card.school_city ? card.school_city + ' · ' : '' }}Kartu Ujian</p>
                     </div>
                     <img v-if="card.logo_url" :src="card.logo_url" class="h-10 w-10 object-contain" alt="logo" />
                 </div>

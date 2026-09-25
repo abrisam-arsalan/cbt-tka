@@ -25,7 +25,7 @@ class StudentSeeder extends Seeder
                 'email' => null,
                 'password' => Hash::make('siswa123'),
                 'role' => 'siswa',
-                'class_id' => ($i % 2) + 1, // 1,2,1,2,1
+                'class_id' => ($i % 3) + 1, // 1,2,3,1,2 -> Kelas 7,8,9
                 'is_active' => true,
             ]);
         }

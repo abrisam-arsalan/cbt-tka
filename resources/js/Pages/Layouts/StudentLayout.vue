@@ -18,13 +18,21 @@ const logout = () => {
 </script>
 
 <template>
-    <div class="flex min-h-screen flex-col bg-slate-100">
+    <div class="flex min-h-screen flex-col bg-slate-50">
         <!-- Header -->
-        <header class="safe-top sticky top-0 z-30 border-b border-brand-700 bg-brand-600 text-white shadow">
-            <div class="flex items-center justify-between px-4 py-3">
-                <h1 class="text-lg font-bold">CBT TKA Sekolah</h1>
+        <header class="safe-top sticky top-0 z-30 bg-gradient-to-r from-brand-500 to-orange-600 text-white shadow-md shadow-brand-500/20">
+            <div class="flex items-center justify-between px-4 py-3.5">
+                <div class="flex items-center gap-2.5">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-white p-0.5 shadow-sm">
+                        <img src="/images/logo.png" alt="Logo" class="h-full w-full object-contain" />
+                    </span>
+                    <h1 class="text-base font-bold tracking-tight">Panglima CBT</h1>
+                </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-sm">{{ user?.name }}</span>
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-xs font-bold">
+                        {{ (user?.name || '?').trim().slice(0, 1).toUpperCase() }}
+                    </span>
+                    <span class="text-sm font-medium">{{ user?.name }}</span>
                 </div>
             </div>
         </header>
@@ -44,32 +52,39 @@ const logout = () => {
         </main>
 
         <!-- Bottom Navigation -->
-        <nav class="safe-bottom fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white">
+        <nav class="safe-bottom fixed bottom-0 left-0 right-0 z-30 border-t border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_-2px_12px_rgba(0,0,0,0.04)]">
             <div class="flex justify-around">
                 <Link
                     v-for="item in navItems"
                     :key="item.route"
                     :href="route(item.route)"
-                    class="flex flex-1 flex-col items-center gap-0.5 py-2 text-xs transition-colors"
+                    class="flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] transition-colors"
                     :class="[
                         route().current(item.route + '*') || route().current(item.route)
                             ? 'font-semibold text-brand-600'
-                            : 'font-normal text-slate-500',
+                            : 'font-medium text-slate-400',
                     ]"
                 >
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
-                    </svg>
+                    <span
+                        class="flex h-8 w-12 items-center justify-center rounded-full transition-colors"
+                        :class="route().current(item.route + '*') || route().current(item.route) ? 'bg-brand-50' : ''"
+                    >
+                        <svg class="h-6 w-6" fill="none" :stroke="route().current(item.route + '*') || route().current(item.route) ? 'currentColor' : 'currentColor'" stroke-width="1.75" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
+                        </svg>
+                    </span>
                     <span>{{ item.label }}</span>
                 </Link>
 
                 <button
                     @click="logout"
-                    class="flex flex-1 flex-col items-center gap-0.5 py-2 text-xs font-normal text-slate-500"
+                    class="flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-slate-400 transition-colors hover:text-danger-600"
                 >
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
+                    <span class="flex h-8 w-12 items-center justify-center rounded-full">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                        </svg>
+                    </span>
                     <span>Keluar</span>
                 </button>
             </div>

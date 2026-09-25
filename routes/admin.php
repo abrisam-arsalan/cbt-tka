@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AntiCheatLogController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\BankController;
 use App\Http\Controllers\Admin\CardController;
 use App\Http\Controllers\Admin\ClassController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Admin\HubController;
 use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\Admin\MonitoringController;
 use App\Http\Controllers\Admin\ParticipantController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\QuestionController;
 use App\Http\Controllers\Admin\QuestionTemplateController;
 use App\Http\Controllers\Admin\SettingController;
@@ -55,10 +57,34 @@ Route::middleware(['auth', 'role:admin', 'throttle:admin'])->group(function () {
     // Log aktivitas (alias ke audit log).
     Route::get('log-aktivitas', [AuditLogController::class, 'index'])->name('logs.index');
 
+    // ------------------------------------------------------------------
+    // Bank Soal (batch soal reusable) + impor terpadu + kelola soal
+    // ------------------------------------------------------------------
+    Route::get('bank', [BankController::class, 'index'])->name('bank.index');
+    Route::get('bank/template', [BankController::class, 'template'])->name('bank.template');
+    Route::get('bank/impor', [BankController::class, 'create'])->name('bank.create');
+    Route::post('bank/impor', [BankController::class, 'store'])
+        ->middleware('throttle:import')->name('bank.store');
+    Route::get('bank/{batch}', [BankController::class, 'show'])->name('bank.show');
+    Route::delete('bank/{batch}', [BankController::class, 'destroy'])->name('bank.destroy');
+    Route::get('bank/{batch}/soal/tambah', [BankController::class, 'createQuestion'])->name('bank.questions.create');
+    Route::post('bank/{batch}/soal', [BankController::class, 'storeQuestion'])->name('bank.questions.store');
+    Route::get('bank/{batch}/soal/{question}/ubah', [BankController::class, 'editQuestion'])->name('bank.questions.edit');
+    Route::put('bank/{batch}/soal/{question}', [BankController::class, 'updateQuestion'])->name('bank.questions.update');
+    Route::delete('bank/{batch}/soal/{question}', [BankController::class, 'destroyQuestion'])->name('bank.questions.destroy');
+
     // Manajemen user (admin + siswa)
+    Route::get('users/template', [UserController::class, 'template'])->name('users.template');
+    Route::post('users/import', [UserController::class, 'import'])
+        ->middleware('throttle:import')
+        ->name('users.import');
     Route::resource('users', UserController::class)->except(['show']);
 
     // Manajemen kelas
+    Route::get('classes/template', [ClassController::class, 'template'])->name('classes.template');
+    Route::post('classes/import', [ClassController::class, 'import'])
+        ->middleware('throttle:import')
+        ->name('classes.import');
     Route::resource('classes', ClassController::class)->except(['show']);
 
     // Ujian + aksi transisi status
@@ -117,6 +143,10 @@ Route::middleware(['auth', 'role:admin', 'throttle:admin'])->group(function () {
     // Pengaturan sistem
     Route::get('pengaturan', [SettingController::class, 'index'])->name('settings.index');
     Route::put('pengaturan', [SettingController::class, 'update'])->name('settings.update');
+
+    // Profil admin yang sedang login (nama tampil + password)
+    Route::get('profil', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('profil', [ProfileController::class, 'update'])->name('profile.update');
 
     // Audit log (read-only)
     Route::get('audit-log', [AuditLogController::class, 'index'])->name('audit-logs.index');

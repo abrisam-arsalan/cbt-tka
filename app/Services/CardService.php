@@ -26,7 +26,10 @@ use Illuminate\Support\Facades\URL;
  */
 class CardService
 {
-    public function __construct(private readonly AuditLogService $audit) {}
+    public function __construct(
+        private readonly AuditLogService $audit,
+        private readonly SettingService $settings,
+    ) {}
 
     /**
      * Generate token baru. Mengembalikan plaintext yang siap dicetak.
@@ -87,7 +90,8 @@ class CardService
         $formatted = $plain !== null ? $generator->format($plain) : null;
 
         return [
-            'school_name' => config('cbt.card.school_name'),
+            'school_name' => $this->settings->get('app.school_name') ?: config('cbt.card.school_name'),
+            'school_city' => $this->settings->get('app.school_city') ?: '',
             'logo_url' => $this->resolveLogoUrl(),
             'student_name' => $participant->user?->name ?? '(siswa terhapus)',
             'username' => $participant->user?->username,

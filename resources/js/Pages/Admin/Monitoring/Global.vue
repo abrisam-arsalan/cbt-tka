@@ -8,7 +8,7 @@ defineProps({
 });
 
 const statusClass = (status) => ({
-    in_progress: 'bg-blue-100 text-blue-700',
+    in_progress: 'bg-brand-100 text-brand-700',
     locked: 'bg-yellow-100 text-yellow-700',
     expired: 'bg-gray-200 text-gray-600',
     submitted: 'bg-green-100 text-green-700',
@@ -54,7 +54,7 @@ const formatRemaining = (seconds) => {
                         <td class="px-4 py-3">
                             <div class="w-28">
                                 <div class="mb-1 h-1.5 rounded bg-gray-200">
-                                    <div class="h-1.5 rounded bg-blue-600" :style="{ width: row.progress_percent + '%' }"></div>
+                                    <div class="h-1.5 rounded bg-brand-600" :style="{ width: row.progress_percent + '%' }"></div>
                                 </div>
                                 <span class="text-xs text-gray-500">{{ row.answered_count }}/{{ row.total_questions }}</span>
                             </div>

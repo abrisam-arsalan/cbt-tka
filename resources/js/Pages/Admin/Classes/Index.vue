@@ -1,14 +1,16 @@
 <script setup>
 import { Head, Link, router } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import ImportPanel from '@/Admin/Shared/ImportPanel.vue';
 
 defineProps({
     title: String,
     classes: { type: Array, default: () => [] },
+    importErrors: { type: Array, default: () => [] },
 });
 
-const btnPrimary = 'bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-sm transition duration-150 flex items-center justify-center text-center w-full sm:w-auto';
-const btnPrimarySm = 'bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
+const btnPrimary = 'bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-sm transition duration-150 flex items-center justify-center text-center w-full sm:w-auto';
+const btnPrimarySm = 'bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
 const btnDangerSm = 'bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
 
 const destroy = (classItem) => {
@@ -27,6 +29,14 @@ const destroy = (classItem) => {
                 + Tambah Kelas
             </Link>
         </div>
+
+        <ImportPanel
+            template-route="admin.classes.template"
+            import-route="admin.classes.import"
+            :columns="['nama', 'tingkat', 'tahun_ajaran', 'deskripsi', 'aktif']"
+            note="Kolom &quot;nama&quot; wajib. Kelas dengan nama + tahun ajaran yang sama tidak akan diduplikasi."
+            :errors="importErrors"
+        />
 
         <div class="overflow-x-auto rounded-xl bg-white shadow-sm">
             <table class="w-full text-sm">

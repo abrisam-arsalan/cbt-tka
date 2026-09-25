@@ -45,16 +45,14 @@ const menu = [
     { type: 'item', label: 'Kelas', route: 'admin.classes.index', icon: 'academic-cap', activePrefix: 'admin.classes.' },
     { type: 'item', label: 'Siswa', route: 'admin.users.index', icon: 'users', activePrefix: 'admin.users.' },
     { type: 'header', label: 'Konten' },
-    { type: 'item', label: 'Bank Soal', route: 'admin.questions.index', icon: 'book-open', activePrefix: 'admin.questions.' },
-    { type: 'header', label: 'Impor & Template' },
     {
         type: 'submenu',
-        label: 'Impor Soal',
-        icon: 'arrow-up-tray',
-        activePrefixes: ['admin.import.', 'admin.templates.'],
+        label: 'Bank Soal',
+        icon: 'book-open',
+        activePrefixes: ['admin.bank.'],
         children: [
-            { label: 'Impor Data Soal', route: 'admin.import.index' },
-            { label: 'Template & Format', route: 'admin.templates.index' },
+            { label: 'Daftar Bank Soal', route: 'admin.bank.index' },
+            { label: 'Impor Soal', route: 'admin.bank.create' },
         ],
     },
     { type: 'header', label: 'Pelaksanaan' },
@@ -118,13 +116,13 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
             class="fixed inset-y-0 left-0 z-50 flex w-64 transform flex-col border-r border-gray-200 bg-white transition-transform lg:relative lg:translate-x-0"
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
         >
-            <div class="flex items-center gap-3 border-b border-gray-200 px-5 py-4">
-                <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">
-                    CBT
+            <div class="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-100">
+                    <img src="/images/logo.png" alt="Logo" class="h-full w-full object-contain" />
                 </div>
                 <div>
-                    <p class="text-sm font-bold leading-tight text-gray-900">CBT TKA Sekolah</p>
-                    <p class="text-xs text-gray-500">Panel Admin</p>
+                    <p class="text-sm font-bold leading-tight text-slate-900">Panglima CBT</p>
+                    <p class="text-xs text-slate-500">Panel Admin</p>
                 </div>
             </div>
 
@@ -143,7 +141,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
                         <button
                             type="button"
                             class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
-                            :class="isActive(item) ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'"
+                            :class="isActive(item) ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'"
                             @click="toggleSubmenu(item.label)"
                         >
                             <span class="flex items-center gap-3">
@@ -175,10 +173,10 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
                                     :key="child.route"
                                     :href="route(child.route)"
                                     class="flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                                    :class="isChildActive(child) ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'"
+                                    :class="isChildActive(child) ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'"
                                     @click="sidebarOpen = false"
                                 >
-                                    <span class="mr-3 h-1 w-1 rounded-full" :class="isChildActive(child) ? 'bg-blue-600' : 'bg-gray-300'"></span>
+                                    <span class="mr-3 h-1.5 w-1.5 rounded-full" :class="isChildActive(child) ? 'bg-brand-500' : 'bg-slate-300'"></span>
                                     {{ child.label }}
                                 </Link>
                             </div>
@@ -190,7 +188,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
                         v-else
                         :href="route(item.route)"
                         class="flex items-center rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
-                        :class="isActive(item) ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'"
+                        :class="isActive(item) ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'"
                         @click="sidebarOpen = false"
                     >
                         <svg class="mr-3 h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -222,7 +220,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
                         class="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-gray-100"
                         @click="showDropdown = !showDropdown"
                     >
-                        <span class="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-orange-600 text-sm font-bold text-white shadow-sm">
                             {{ initials }}
                         </span>
                         <span class="hidden text-sm font-medium text-gray-700 sm:block">{{ user?.name }}</span>
@@ -253,14 +251,14 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
                             </div>
 
                             <Link
-                                :href="route('admin.settings.index')"
+                                :href="route('admin.profile.edit')"
                                 class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
                                 @click="showDropdown = false"
                             >
                                 <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
-                                Pengaturan Profil
+                                Profil Saya
                             </Link>
 
                             <Link

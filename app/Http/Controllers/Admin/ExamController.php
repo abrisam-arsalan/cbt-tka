@@ -6,7 +6,10 @@ use App\Enums\ExamStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreExamRequest;
 use App\Models\Exam;
+use App\Models\QuestionBatch;
+use App\Models\SchoolClass;
 use App\Services\ExamTimerService;
+use App\Services\QuestionCopyService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,7 +17,10 @@ use Inertia\Response;
 
 class ExamController extends Controller
 {
-    public function __construct(private readonly ExamTimerService $timer) {}
+    public function __construct(
+        private readonly ExamTimerService $timer,
+        private readonly QuestionCopyService $copy,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -54,23 +60,34 @@ class ExamController extends Controller
             'edit' => false,
             'statusOptions' => ExamStatus::options(),
             'antiCheatActionOptions' => \App\Enums\AntiCheatAction::options(),
+            'classes' => $this->classOptions(),
+            'batches' => $this->batchOptions(),
         ]);
     }
 
     public function store(StoreExamRequest $request): RedirectResponse
     {
-        $exam = Exam::create(array_merge($request->validated(), [
+        $data = $request->validated();
+        $batchIds = array_map('intval', (array) ($data['batch_ids'] ?? []));
+        unset($data['batch_ids']);
+
+        $exam = Exam::create(array_merge($data, [
             'created_by' => $request->user()->id,
         ]));
 
+        // Salin soal bank terpilih menjadi soal milik ujian ini.
+        $copied = $this->copy->copyBatchesToExam($batchIds, $exam);
+
         return redirect()
             ->route('admin.exams.show', $exam)
-            ->with('success', 'Ujian berhasil dibuat.');
+            ->with('success', $copied > 0
+                ? "Ujian dibuat dengan {$copied} soal dari bank."
+                : 'Ujian berhasil dibuat. Tambahkan soal bila belum memilih bank.');
     }
 
     public function show(Exam $exam): Response
     {
-        $exam->loadCount(['questions', 'participants', 'attempts']);
+        $exam->loadCount(['questions', 'participants', 'attempts'])->load('schoolClass');
 
         return Inertia::render('Admin/Exams/Show', [
             'title' => $exam->title,
@@ -78,6 +95,7 @@ class ExamController extends Controller
                 'id' => $exam->id,
                 'title' => $exam->title,
                 'description' => $exam->description,
+                'class_name' => $exam->schoolClass?->name,
                 'duration_minutes' => (int) $exam->duration_minutes,
                 'start_at' => $exam->start_at?->toIso8601String(),
                 'end_at' => $exam->end_at?->toIso8601String(),
@@ -105,12 +123,14 @@ class ExamController extends Controller
             'title' => 'Edit: '.$exam->title,
             'edit' => true,
             'exam' => $exam->only([
-                'id', 'title', 'description', 'duration_minutes',
+                'id', 'title', 'description', 'class_id', 'duration_minutes',
                 'start_at', 'end_at', 'anti_cheat_enabled', 'anti_cheat_max_warnings',
                 'anti_cheat_action', 'shuffle_questions', 'shuffle_options', 'offline_grace_minutes',
             ]),
             'statusOptions' => ExamStatus::options(),
             'antiCheatActionOptions' => \App\Enums\AntiCheatAction::options(),
+            'classes' => $this->classOptions(),
+            'batches' => [],
         ]);
     }
 
@@ -173,5 +193,36 @@ class ExamController extends Controller
         $count = $this->timer->closeAndAutoSubmitExam($exam, $request->user());
 
         return back()->with('success', "Ujian ditutup dan {$count} attempt disubmit paksa.");
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function classOptions(): array
+    {
+        return SchoolClass::query()->active()->ordered()->get()
+            ->map(fn (SchoolClass $c) => ['value' => (int) $c->id, 'label' => $c->name])
+            ->all();
+    }
+
+    /**
+     * Daftar bank soal yang bisa dipilih untuk ujian (beserta jumlah soalnya).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function batchOptions(): array
+    {
+        return QuestionBatch::query()
+            ->with('schoolClass')
+            ->withCount(['questions' => fn ($q) => $q->whereNull('exam_id')->where('is_active', true)])
+            ->ordered()
+            ->get()
+            ->map(fn (QuestionBatch $b) => [
+                'value' => (int) $b->id,
+                'label' => $b->name,
+                'class_name' => $b->schoolClass?->name,
+                'questions_count' => (int) $b->questions_count,
+            ])
+            ->all();
     }
 }

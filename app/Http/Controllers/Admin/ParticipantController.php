@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamParticipant;
+use App\Models\SchoolClass;
+use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\CardService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,17 +30,42 @@ class ParticipantController extends Controller
             ->orderBy('id')
             ->get();
 
-        $availableUsers = \App\Models\User::query()
+        $participantIds = $participants->pluck('user_id')->all();
+
+        $availableUsers = User::query()
             ->siswa()
             ->active()
-            ->whereNotIn('id', $participants->pluck('user_id'))
+            ->whereNotIn('id', $participantIds)
             ->with('schoolClass')
             ->orderBy('name')
             ->get();
 
+        // Jumlah siswa aktif per kelas yang belum terdaftar, dalam satu query.
+        $unregisteredPerClass = User::query()
+            ->siswa()
+            ->active()
+            ->whereNotNull('class_id')
+            ->whereNotIn('id', $participantIds)
+            ->select('class_id', DB::raw('count(*) as aggregate'))
+            ->groupBy('class_id')
+            ->pluck('aggregate', 'class_id');
+
+        $classes = SchoolClass::query()
+            ->active()
+            ->ordered()
+            ->withCount('students')
+            ->get()
+            ->map(fn (SchoolClass $class) => [
+                'id' => $class->id,
+                'name' => $class->name,
+                'students_count' => (int) $class->students_count,
+                'unregistered_count' => (int) ($unregisteredPerClass[$class->id] ?? 0),
+            ]);
+
         return Inertia::render('Admin/Participants/Index', [
             'title' => 'Peserta: '.$exam->title,
             'exam' => $exam->only(['id', 'title', 'status']),
+            'classes' => $classes,
             'participants' => $participants->map(fn (ExamParticipant $p) => [
                 'id' => $p->id,
                 'user_id' => $p->user_id,
@@ -86,27 +114,40 @@ class ParticipantController extends Controller
     }
 
     /**
-     * Tambah banyak siswa sekaligus.
+     * Tambah massal: seluruh siswa aktif dari SATU kelas sekaligus menjadi
+     * peserta ujian (misal semua murid 7C). Siswa yang sudah terdaftar
+     * dilewati.
      */
     public function bulk(Request $request, Exam $exam): RedirectResponse
     {
         $validated = $request->validate([
-            'user_ids' => ['required', 'array', 'min:1'],
-            'user_ids.*' => ['integer', Rule::exists('users', 'id')->where('role', 'siswa')],
+            'class_id' => ['required', 'integer', Rule::exists('classes', 'id')],
+        ], [
+            'class_id.required' => 'Pilih kelas terlebih dahulu.',
+            'class_id.exists' => 'Kelas tidak ditemukan.',
         ]);
+
+        $schoolClass = SchoolClass::findOrFail($validated['class_id']);
 
         $existing = $exam->participants()->pluck('user_id')->all();
 
+        $students = User::query()
+            ->siswa()
+            ->active()
+            ->where('class_id', $schoolClass->id)
+            ->whereNotIn('id', $existing)
+            ->orderBy('name')
+            ->get();
+
+        if ($students->isEmpty()) {
+            return back()->with('warning', "Semua siswa kelas {$schoolClass->name} sudah terdaftar sebagai peserta.");
+        }
+
         $added = 0;
-        $now = now();
 
-        foreach ($validated['user_ids'] as $userId) {
-            if (in_array((int) $userId, $existing, true)) {
-                continue;
-            }
-
+        foreach ($students as $student) {
             $participant = $exam->participants()->create([
-                'user_id' => $userId,
+                'user_id' => $student->id,
                 'token_hash' => '',
                 'is_active' => true,
             ]);
@@ -116,13 +157,13 @@ class ParticipantController extends Controller
         }
 
         $this->audit->log(
-            action: 'participant.bulk_added',
+            action: 'participant.bulk_class_added',
             subject: $exam,
-            description: "{$added} peserta ditambahkan massal ke ujian {$exam->title}.",
-            meta: ['added' => $added, 'skipped' => count($validated['user_ids']) - $added],
+            description: "{$added} siswa kelas {$schoolClass->name} ditambahkan massal ke ujian {$exam->title}.",
+            meta: ['class_id' => $schoolClass->id, 'added' => $added],
         );
 
-        return back()->with('success', "{$added} peserta berhasil ditambahkan.");
+        return back()->with('success', "{$added} siswa kelas {$schoolClass->name} berhasil ditambahkan beserta token ujian.");
     }
 
     public function destroy(Exam $exam, ExamParticipant $participant): RedirectResponse

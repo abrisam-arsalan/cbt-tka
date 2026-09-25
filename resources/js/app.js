@@ -5,7 +5,7 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue, route } from 'ziggy-js';
 
-const appName = import.meta.env.VITE_APP_NAME || 'CBT TKA Sekolah';
+const appName = import.meta.env.VITE_APP_NAME || 'Panglima CBT';
 
 // route() dipakai sebagai global di sebagian besar komponen `<script setup>`.
 // Membuatnya tersedia di globalThis memastikan template DAN kode script dapat
@@ -26,7 +26,7 @@ createInertiaApp({
             .mount(el);
     },
     progress: {
-        color: '#4f46e5',
+        color: '#ea580c',
         showSpinner: true,
     },
 });

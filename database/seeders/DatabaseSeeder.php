@@ -12,8 +12,8 @@ class DatabaseSeeder extends Seeder
             AdminSeeder::class,
             ClassSeeder::class,
             StudentSeeder::class,
-            ExamSeeder::class,
-            QuestionSeeder::class,
+            QuestionSeeder::class, // buat Bank Soal lebih dulu
+            ExamSeeder::class,     // ujian menyalin dari bank
             QuestionTemplateSeeder::class,
             SettingSeeder::class,
         ]);

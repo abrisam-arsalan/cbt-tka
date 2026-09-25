@@ -20,7 +20,7 @@ defineProps({
             </div>
             <Link
                 :href="route('admin.exams.cards.print', exam.id)"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-sm transition duration-150 flex items-center justify-center text-center w-full sm:w-auto"
+                class="bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-sm transition duration-150 flex items-center justify-center text-center w-full sm:w-auto"
             >
                 🖨 Cetak Massal
             </Link>

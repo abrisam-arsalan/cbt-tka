@@ -139,10 +139,6 @@ const actionLabel = {
                 <div class="font-semibold text-slate-800">📊 Monitoring</div>
                 <div class="text-xs text-slate-500">Presence real-time</div>
             </Link>
-            <Link :href="route('admin.exams.import.show', exam.id)" class="rounded-xl bg-white p-4 shadow-sm hover:bg-slate-50">
-                <div class="font-semibold text-slate-800">📥 Impor Soal</div>
-                <div class="text-xs text-slate-500">CSV / XLSX</div>
-            </Link>
         </div>
     </AdminLayout>
 </template>

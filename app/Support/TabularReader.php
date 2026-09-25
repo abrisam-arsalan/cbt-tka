@@ -1,0 +1,92 @@
+<?php
+
+namespace App\Support;
+
+use Illuminate\Http\UploadedFile;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+
+/**
+ * Membaca file CSV/TXT/XLSX/XLS menjadi daftar baris asosiatif (header -> nilai).
+ * Header dinormalisasi ke huruf kecil + trim. Baris kosong dilewati.
+ *
+ * Dipakai oleh BulkImportService dan QuestionBankImportService. Sengaja memakai
+ * CSV native + PhpSpreadsheet (bukan paket Excel Laravel) karena versi paket
+ * yang terpasang tidak menyediakan kelas SimpleExcel*.
+ */
+class TabularReader
+{
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public static function rows(UploadedFile $file): array
+    {
+        $path = $file->getPathname();
+        $ext = strtolower($file->getClientOriginalExtension());
+
+        $raw = in_array($ext, ['xlsx', 'xls'], true)
+            ? self::spreadsheet($path)
+            : self::csv($path);
+
+        if ($raw === []) {
+            return [];
+        }
+
+        $header = array_shift($raw);
+        $header = array_map(fn ($h) => strtolower(trim((string) $h)), $header);
+
+        $rows = [];
+
+        foreach ($raw as $line) {
+            $filled = array_filter($line, fn ($v) => $v !== null && trim((string) $v) !== '');
+
+            if ($filled === []) {
+                continue;
+            }
+
+            $assoc = [];
+            foreach ($header as $i => $key) {
+                if ($key !== '') {
+                    $assoc[$key] = $line[$i] ?? null;
+                }
+            }
+            $rows[] = $assoc;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return array<int, array<int, mixed>>
+     */
+    private static function csv(string $path): array
+    {
+        $handle = fopen($path, 'rb');
+
+        if ($handle === false) {
+            return [];
+        }
+
+        $rows = [];
+        $first = true;
+
+        while (($data = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+            if ($first && $data !== []) {
+                $data[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $data[0]);
+                $first = false;
+            }
+            $rows[] = $data;
+        }
+
+        fclose($handle);
+
+        return $rows;
+    }
+
+    /**
+     * @return array<int, array<int, mixed>>
+     */
+    private static function spreadsheet(string $path): array
+    {
+        return IOFactory::load($path)->getActiveSheet()->toArray(null, true, false, false);
+    }
+}

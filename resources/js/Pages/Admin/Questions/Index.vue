@@ -8,8 +8,8 @@ const props = defineProps({
     questions: { type: Array, default: () => [] },
 });
 
-const btnPrimary = 'bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-sm transition duration-150 flex items-center justify-center text-center w-full sm:w-auto';
-const btnPrimarySm = 'bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
+const btnPrimary = 'bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-sm transition duration-150 flex items-center justify-center text-center w-full sm:w-auto';
+const btnPrimarySm = 'bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
 const btnDangerSm = 'bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
 
 const destroy = (question) => {
@@ -18,7 +18,7 @@ const destroy = (question) => {
 };
 
 const typeClass = (type) => ({
-    pg: 'bg-blue-100 text-blue-700',
+    pg: 'bg-brand-100 text-brand-700',
     pgk: 'bg-purple-100 text-purple-700',
     boolean: 'bg-cyan-100 text-cyan-700',
     matching: 'bg-amber-100 text-amber-700',

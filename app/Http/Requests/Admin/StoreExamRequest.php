@@ -24,6 +24,10 @@ class StoreExamRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'class_id' => [$isUpdate ? 'sometimes' : 'nullable', 'integer', 'exists:classes,id'],
+            // Hanya dipakai saat membuat ujian: bank soal yang isinya disalin.
+            'batch_ids' => ['sometimes', 'nullable', 'array'],
+            'batch_ids.*' => ['integer', 'exists:question_batches,id'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:600'],
             'start_at' => ['nullable', 'date'],
             'end_at' => ['nullable', 'date', 'after:start_at'],

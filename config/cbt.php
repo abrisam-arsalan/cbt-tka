@@ -71,8 +71,8 @@ return [
     | Kartu ujian & QR code.
     */
     'card' => [
-        'school_name' => (string) env('CBT_CARD_SCHOOL_NAME', env('APP_NAME', 'CBT TKA Sekolah')),
-        'logo_path' => env('CBT_CARD_LOGO_PATH'),
+        'school_name' => (string) env('CBT_CARD_SCHOOL_NAME', env('APP_NAME', 'Panglima CBT')),
+        'logo_path' => env('CBT_CARD_LOGO_PATH', 'images/logo.png'),
         'qr_size' => (int) env('CBT_CARD_QR_SIZE', 180),
     ],
 

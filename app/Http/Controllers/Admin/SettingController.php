@@ -21,6 +21,7 @@ class SettingController extends Controller
     public function index(): Response
     {
         $all = \App\Models\Setting::query()
+            ->where('group', '!=', 'anti_cheat') // anti-cheat diatur per ujian
             ->orderBy('group')
             ->orderBy('key')
             ->get();

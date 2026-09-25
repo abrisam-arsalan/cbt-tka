@@ -40,7 +40,7 @@ const statusClass = (status) => ({
     completed: 'bg-gray-100 text-gray-500',
 }[status] || 'bg-gray-100 text-gray-600');
 
-const btnPrimarySm = 'bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
+const btnPrimarySm = 'bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
 </script>
 
 <template>
@@ -63,7 +63,7 @@ const btnPrimarySm = 'bg-blue-600 hover:bg-blue-700 text-white text-xs font-semi
                 <tbody>
                     <tr v-for="exam in exams" :key="exam.id" class="border-b border-gray-100 last:border-0">
                         <td class="px-4 py-3">
-                            <Link :href="route('admin.exams.show', exam.id)" class="font-medium text-blue-700 hover:underline">
+                            <Link :href="route('admin.exams.show', exam.id)" class="font-medium text-brand-700 hover:underline">
                                 {{ exam.title }}
                             </Link>
                         </td>

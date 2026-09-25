@@ -6,15 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreClassRequest;
 use App\Models\SchoolClass;
 use App\Services\AuditLogService;
+use App\Services\BulkImportService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ClassController extends Controller
 {
-    public function __construct(private readonly AuditLogService $audit) {}
+    public function __construct(
+        private readonly AuditLogService $audit,
+        private readonly BulkImportService $imports,
+    ) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $classes = SchoolClass::query()
             ->withCount(['students'])
@@ -32,7 +38,46 @@ class ClassController extends Controller
                 'students_count' => (int) $class->students_count,
                 'is_active' => (bool) $class->is_active,
             ]),
+            'importErrors' => $request->session()->pull('import_errors', []),
         ]);
+    }
+
+    /**
+     * Unduh template CSV untuk menambah banyak kelas sekaligus.
+     */
+    public function template(): BinaryFileResponse
+    {
+        $path = $this->imports->downloadClassTemplate();
+
+        return response()->download($path, 'template-kelas.csv')->deleteFileAfterSend();
+    }
+
+    /**
+     * Impor kelas dari file CSV/XLSX.
+     */
+    public function import(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls', 'max:5120'],
+        ], [
+            'file.mimes' => 'File harus berformat CSV atau XLSX.',
+            'file.max' => 'Ukuran file maksimum 5 MB.',
+        ]);
+
+        $result = $this->imports->importClasses($request->file('file'), $request->user());
+
+        if ($result['errors'] !== []) {
+            $request->session()->put('import_errors', $result['errors']);
+        }
+
+        $message = $result['imported'] > 0
+            ? "{$result['imported']} kelas berhasil ditambahkan"
+               .($result['errors'] !== [] ? ', '.count($result['errors'])." baris dilewati (lihat detail)." : '.')
+            : 'Tidak ada kelas yang ditambahkan. Periksa kembali file Anda.';
+
+        return redirect()
+            ->route('admin.classes.index')
+            ->with($result['imported'] > 0 ? 'success' : 'warning', $message);
     }
 
     public function create(): Response

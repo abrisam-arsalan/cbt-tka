@@ -8,63 +8,101 @@ use App\Http\Requests\Admin\StoreUserRequest;
 use App\Models\SchoolClass;
 use App\Models\User;
 use App\Services\AuditLogService;
+use App\Services\BulkImportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class UserController extends Controller
 {
-    public function __construct(private readonly AuditLogService $audit) {}
+    public function __construct(
+        private readonly AuditLogService $audit,
+        private readonly BulkImportService $imports,
+    ) {}
 
     public function index(Request $request): Response
     {
-        $role = $request->input('role');
-
+        // Menu Siswa khusus peserta didik; akun admin dikelola lewat Profil.
         $users = User::query()
-            ->withTrashed()
+            ->siswa()
             ->with('schoolClass')
-            ->when($role !== null && $role !== '' && $role !== 'all', fn ($q) => $q->where('role', $role))
             ->when($request->filled('search'), fn ($q) => $q->where(function ($q) use ($request) {
                 $term = '%'.$request->string('search').'%';
                 $q->where('name', 'like', $term)->orWhere('username', 'like', $term);
             }))
-            ->orderBy('role')
+            ->when($request->filled('class_id'), fn ($q) => $q->where('class_id', $request->integer('class_id')))
             ->orderBy('name')
             ->paginate(20)
             ->withQueryString();
 
         return Inertia::render('Admin/Users/Index', [
-            'title' => 'Manajemen User',
+            'title' => 'Data Siswa',
             'users' => $users->through(fn (User $user) => [
                 'id' => $user->id,
                 'username' => $user->username,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => $user->role->value,
-                'role_label' => $user->role->label(),
                 'class_id' => $user->class_id,
                 'class_name' => $user->schoolClass?->name,
                 'nisn' => $user->nisn,
                 'is_active' => (bool) $user->is_active,
-                'deleted_at' => $user->deleted_at?->toIso8601String(),
                 'last_login_at' => $user->last_login_at?->toIso8601String(),
             ]),
             'filters' => [
-                'role' => $role ?? 'all',
                 'search' => (string) $request->input('search', ''),
+                'class_id' => $request->input('class_id'),
             ],
-            'roleOptions' => array_merge(
-                [['value' => 'all', 'label' => 'Semua Role']],
-                UserRole::options(),
-            ),
+            'classOptions' => SchoolClass::query()->active()->ordered()->get()
+                ->map(fn (SchoolClass $c) => ['value' => (int) $c->id, 'label' => $c->name])
+                ->all(),
+            'importErrors' => $request->session()->pull('import_errors', []),
         ]);
+    }
+
+    /**
+     * Unduh template CSV untuk menambah banyak akun siswa sekaligus.
+     */
+    public function template(): BinaryFileResponse
+    {
+        $path = $this->imports->downloadStudentTemplate();
+
+        return response()->download($path, 'template-siswa.csv')->deleteFileAfterSend();
+    }
+
+    /**
+     * Impor akun siswa dari file CSV/XLSX.
+     */
+    public function import(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls', 'max:5120'],
+        ], [
+            'file.mimes' => 'File harus berformat CSV atau XLSX.',
+            'file.max' => 'Ukuran file maksimum 5 MB.',
+        ]);
+
+        $result = $this->imports->importStudents($request->file('file'), $request->user());
+
+        if ($result['errors'] !== []) {
+            $request->session()->put('import_errors', $result['errors']);
+        }
+
+        $message = $result['imported'] > 0
+            ? "{$result['imported']} akun siswa berhasil ditambahkan"
+               .($result['errors'] !== [] ? ', '.count($result['errors'])." baris dilewati (lihat detail)." : '.')
+            : 'Tidak ada akun yang ditambahkan. Periksa kembali file Anda.';
+
+        return redirect()
+            ->route('admin.users.index')
+            ->with($result['imported'] > 0 ? 'success' : 'warning', $message);
     }
 
     public function create(): Response
     {
         return Inertia::render('Admin/Users/Form', [
-            'title' => 'Tambah User',
+            'title' => 'Tambah Siswa',
             'edit' => false,
             'user' => null,
             'classes' => $this->classOptions(),
@@ -90,7 +128,7 @@ class UserController extends Controller
     public function edit(User $user): Response
     {
         return Inertia::render('Admin/Users/Form', [
-            'title' => 'Edit User: '.$user->name,
+            'title' => 'Edit Siswa: '.$user->name,
             'edit' => true,
             'user' => $user->only([
                 'id', 'username', 'name', 'email', 'role',
@@ -149,6 +187,8 @@ class UserController extends Controller
     private function userData(StoreUserRequest $request): array
     {
         $data = $request->validated();
+        // Menu Siswa selalu membuat/mengubah peserta didik; role dipaksa siswa.
+        $data['role'] = UserRole::Siswa->value;
         $data['is_active'] = $request->boolean('is_active', true);
 
         if (array_key_exists('password', $data) && ($data['password'] === null || $data['password'] === '')) {

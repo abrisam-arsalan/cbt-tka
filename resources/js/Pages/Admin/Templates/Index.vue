@@ -8,8 +8,8 @@ defineProps({
     typeOptions: { type: Array, default: () => [] },
 });
 
-const btnPrimary = 'bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-sm transition duration-150 flex items-center justify-center text-center w-full sm:w-auto';
-const btnPrimarySm = 'bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
+const btnPrimary = 'bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-sm transition duration-150 flex items-center justify-center text-center w-full sm:w-auto';
+const btnPrimarySm = 'bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
 const btnDangerSm = 'bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
 
 const destroy = (template) => {
@@ -37,7 +37,7 @@ const destroy = (template) => {
                     v-for="option in typeOptions"
                     :key="option.value"
                     :href="route('admin.templates.download', option.value)"
-                    class="rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                    class="rounded-lg bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100"
                 >
                     ⬇ {{ option.label }}
                 </a>
@@ -60,7 +60,7 @@ const destroy = (template) => {
                         <td class="px-4 py-3 font-medium text-gray-800">{{ template.name }}</td>
                         <td class="px-4 py-3">{{ template.question_type_label }}</td>
                         <td class="px-4 py-3">
-                            <span class="rounded-full px-2 py-0.5 text-xs" :class="template.is_builtin ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'">
+                            <span class="rounded-full px-2 py-0.5 text-xs" :class="template.is_builtin ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'">
                                 {{ template.is_builtin ? 'Bawaan' : 'Custom' }}
                             </span>
                         </td>

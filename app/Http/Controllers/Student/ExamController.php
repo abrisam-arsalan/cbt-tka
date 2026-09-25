@@ -48,6 +48,10 @@ class ExamController extends Controller
             abort(403, 'Anda bukan peserta ujian ini.');
         }
 
+        if (! $exam->accessibleToUser($user)) {
+            abort(403, 'Ujian ini khusus untuk kelas tertentu.');
+        }
+
         $attempt = $this->findAttempt($exam, $user);
 
         return Inertia::render('Student/ExamShow', [
@@ -75,6 +79,10 @@ class ExamController extends Controller
             ->where('user_id', $user->id)
             ->where('is_active', true)
             ->firstOrFail();
+
+        if (! $exam->accessibleToUser($user)) {
+            abort(403, 'Ujian ini khusus untuk kelas tertentu.');
+        }
 
         $attempt = $this->findAttempt($exam, $user);
 
@@ -135,6 +143,10 @@ class ExamController extends Controller
             abort(403, 'Anda bukan peserta ujian ini.');
         }
 
+        if (! $exam->accessibleToUser($user)) {
+            abort(403, 'Ujian ini khusus untuk kelas tertentu.');
+        }
+
         $this->timer->startAttempt(
             exam: $exam,
             user: $user,
@@ -172,6 +184,7 @@ class ExamController extends Controller
 
         $exams = Exam::query()
             ->whereIn('id', $examIds)
+            ->where(fn ($q) => $q->whereNull('class_id')->orWhere('class_id', $user->class_id))
             ->withCount(['questions' => fn ($q) => $q->where('is_active', true)])
             ->orderByDesc('start_at')
             ->orderByDesc('id')

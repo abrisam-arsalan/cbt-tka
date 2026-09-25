@@ -5,22 +5,26 @@ namespace Database\Seeders;
 use App\Models\SchoolClass;
 use Illuminate\Database\Seeder;
 
+/**
+ * Kelas kunci untuk jenjang SMP: hanya Kelas 7, 8, dan 9.
+ */
 class ClassSeeder extends Seeder
 {
     public function run(): void
     {
-        SchoolClass::create([
-            'name' => 'X IPA 1',
-            'grade' => '10',
-            'academic_year' => '2026/2027',
-            'is_active' => true,
-        ]);
+        $classes = [
+            ['name' => 'Kelas 7', 'grade' => '7'],
+            ['name' => 'Kelas 8', 'grade' => '8'],
+            ['name' => 'Kelas 9', 'grade' => '9'],
+        ];
 
-        SchoolClass::create([
-            'name' => 'XI IPA 2',
-            'grade' => '11',
-            'academic_year' => '2026/2027',
-            'is_active' => true,
-        ]);
+        foreach ($classes as $class) {
+            SchoolClass::create([
+                'name' => $class['name'],
+                'grade' => $class['grade'],
+                'academic_year' => '2026/2027',
+                'is_active' => true,
+            ]);
+        }
     }
 }

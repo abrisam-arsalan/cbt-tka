@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 #[Fillable([
-    'title', 'description', 'duration_minutes', 'start_at', 'end_at', 'status', 'paused_at',
+    'title', 'description', 'class_id', 'duration_minutes', 'start_at', 'end_at', 'status', 'paused_at',
     'anti_cheat_enabled', 'anti_cheat_max_warnings', 'anti_cheat_action',
     'shuffle_questions', 'shuffle_options', 'offline_grace_minutes', 'created_by',
 ])]
@@ -57,6 +57,24 @@ class Exam extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function schoolClass(): BelongsTo
+    {
+        return $this->belongsTo(SchoolClass::class, 'class_id');
+    }
+
+    /**
+     * Apakah siswa ini boleh mengakses ujian (berdasarkan pembatasan kelas).
+     * class_id null = tidak dibatasi.
+     */
+    public function accessibleToUser(?User $user): bool
+    {
+        if ($this->class_id === null) {
+            return true;
+        }
+
+        return $user !== null && (int) $user->class_id === (int) $this->class_id;
     }
 
     public function scopeStatus(Builder $query, ExamStatus|string $status): Builder
@@ -160,8 +178,13 @@ class Exam extends Model
     public function graceMinutes(): int
     {
         $grace = (int) $this->offline_grace_minutes;
+        if ($grace > 0) {
+            return $grace;
+        }
 
-        return $grace > 0 ? $grace : (int) config('cbt.exam.default_offline_grace_minutes', 10);
+        $setting = (int) app(\App\Services\SettingService::class)->get('exam.default_offline_grace', 0);
+
+        return $setting > 0 ? $setting : (int) config('cbt.exam.default_offline_grace_minutes', 10);
     }
 
     public function maxWarnings(): int

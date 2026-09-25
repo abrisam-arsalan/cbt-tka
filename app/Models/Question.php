@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'exam_id', 'type', 'stimulus', 'question_text',
+    'exam_id', 'batch_id', 'class_id', 'type', 'stimulus', 'question_text',
     'media_url', 'order', 'is_active',
 ])]
 class Question extends Model
@@ -30,6 +30,24 @@ class Question extends Model
     public function exam(): BelongsTo
     {
         return $this->belongsTo(Exam::class);
+    }
+
+    public function batch(): BelongsTo
+    {
+        return $this->belongsTo(QuestionBatch::class, 'batch_id');
+    }
+
+    public function schoolClass(): BelongsTo
+    {
+        return $this->belongsTo(SchoolClass::class, 'class_id');
+    }
+
+    /**
+     * Soal bank (belum disalin ke ujian) — exam_id kosong.
+     */
+    public function scopeBank(Builder $query): Builder
+    {
+        return $query->whereNull('exam_id');
     }
 
     public function options(): HasMany

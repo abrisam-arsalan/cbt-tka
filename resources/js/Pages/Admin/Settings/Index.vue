@@ -33,9 +33,8 @@ const submit = () => {
 };
 
 const groupLabel = (name) => ({
-    general: 'Umum',
-    exam: 'Ujian',
-    anti_cheat: 'Anti-Cheat',
+    general: 'Umum & Identitas Sekolah',
+    exam: 'Default Ujian',
     card: 'Kartu Ujian',
     appearance: 'Tampilan',
 }[name] || name);
