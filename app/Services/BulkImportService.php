@@ -165,13 +165,41 @@ class BulkImportService
      */
     public function importStudents(UploadedFile $file, User $actor): array
     {
+        // Impor ratusan siswa = ratusan hash bcrypt (lambat by design) —
+        // jangan biarkan max_execution_time 30s memotongnya jadi 500.
+        @set_time_limit(0);
+        @ini_set('memory_limit', '512M');
+
         $rows = $this->readRows($file);
         $errors = [];
         $seenUsernames = [];
         $seenNisn = [];
         $imported = 0;
 
-        DB::transaction(function () use ($rows, $actor, &$errors, &$seenUsernames, &$seenNisn, &$imported) {
+        // Preload data yang ada SEKALI di awal, bukan 3 query per baris.
+        // (566 baris x 3 query = ~1700 query dihemat jadi 3 query total.)
+        $existingUsernames = User::withTrashed()
+            ->pluck('username')
+            ->mapWithKeys(fn ($u) => [strtolower($u) => true])
+            ->all();
+
+        $existingNisn = User::withTrashed()
+            ->whereNotNull('nisn')
+            ->pluck('nisn')
+            ->mapWithKeys(fn ($n) => [$n => true])
+            ->all();
+
+        $existingEmails = User::whereNotNull('email')
+            ->pluck('email')
+            ->mapWithKeys(fn ($e) => [strtolower($e) => true])
+            ->all();
+
+        $classMap = SchoolClass::query()
+            ->get()
+            ->mapWithKeys(fn (SchoolClass $c) => [strtolower(trim($c->name)) => (int) $c->id])
+            ->all();
+
+        DB::transaction(function () use ($rows, $actor, &$errors, &$seenUsernames, &$seenNisn, &$imported, &$existingUsernames, &$existingNisn, &$existingEmails, $classMap) {
             foreach ($rows as $index => $row) {
                 $rowNumber = $index + 2;
                 $normalized = $this->normalizeStudentRow($row);
@@ -181,7 +209,7 @@ class BulkImportService
                     $normalized['username'] = $normalized['nisn'];
                 }
 
-                $messages = $this->validateStudentRow($normalized, $seenUsernames, $seenNisn);
+                $messages = $this->validateStudentRow($normalized, $seenUsernames, $seenNisn, $existingUsernames, $existingNisn, $existingEmails);
 
                 if ($messages !== []) {
                     $errors[] = ['row' => $rowNumber, 'raw' => $normalized, 'errors' => $messages];
@@ -192,11 +220,7 @@ class BulkImportService
                 $classId = null;
 
                 if ($normalized['class_name'] !== null) {
-                    $class = SchoolClass::query()
-                        ->whereRaw('LOWER(name) = ?', [strtolower($normalized['class_name'])])
-                        ->orderBy('id')
-                        ->first();
-                    $classId = $class?->id;
+                    $classId = $classMap[strtolower(trim($normalized['class_name']))] ?? null;
                 }
 
                 $username = strtolower($normalized['username']);
@@ -264,9 +288,12 @@ class BulkImportService
      * @param  array<string, mixed>  $row
      * @param  array<string, bool>  $seenUsernames
      * @param  array<string, bool>  $seenNisn
+     * @param  array<string, bool>  $existingUsernames  (lowercase => true, preload)
+     * @param  array<string, bool>  $existingNisn      (preload)
+     * @param  array<string, bool>  $existingEmails    (lowercase => true, preload)
      * @return array<int, string>
      */
-    private function validateStudentRow(array $row, array $seenUsernames, array $seenNisn): array
+    private function validateStudentRow(array $row, array $seenUsernames, array $seenNisn, array $existingUsernames = [], array $existingNisn = [], array $existingEmails = []): array
     {
         $messages = [];
 
@@ -279,7 +306,7 @@ class BulkImportService
 
             if (isset($seenUsernames[$username])) {
                 $messages[] = 'Username duplikat di dalam file.';
-            } elseif (User::withTrashed()->whereRaw('LOWER(username) = ?', [$username])->exists()) {
+            } elseif (isset($existingUsernames[$username]) || ($existingUsernames === [] && User::withTrashed()->whereRaw('LOWER(username) = ?', [$username])->exists())) {
                 $messages[] = 'Username sudah dipakai akun lain.';
             }
         }
@@ -290,7 +317,7 @@ class BulkImportService
 
         if ($row['email'] !== null && ! filter_var($row['email'], FILTER_VALIDATE_EMAIL)) {
             $messages[] = 'Format email tidak valid.';
-        } elseif ($row['email'] !== null && User::whereRaw('LOWER(email) = ?', [strtolower($row['email'])])->exists()) {
+        } elseif ($row['email'] !== null && (isset($existingEmails[strtolower($row['email'])]) || ($existingEmails === [] && User::whereRaw('LOWER(email) = ?', [strtolower($row['email'])])->exists()))) {
             $messages[] = 'Email sudah dipakai akun lain.';
         }
 
@@ -299,7 +326,7 @@ class BulkImportService
                 $messages[] = 'NISN maksimal 32 karakter.';
             } elseif (isset($seenNisn[$row['nisn']])) {
                 $messages[] = 'NISN duplikat di dalam file.';
-            } elseif (User::withTrashed()->where('nisn', $row['nisn'])->exists()) {
+            } elseif (isset($existingNisn[$row['nisn']]) || ($existingNisn === [] && User::withTrashed()->where('nisn', $row['nisn'])->exists())) {
                 $messages[] = 'NISN sudah terdaftar di akun lain.';
             }
         }
