@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\UserRole;
 use App\Models\SchoolClass;
 use App\Models\User;
+use App\Support\TabularReader;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -375,10 +376,12 @@ class BulkImportService
             return [];
         }
 
+        // Excel locale ID menyimpan CSV berpemisah ';' — deteksi otomatis.
+        $delimiter = TabularReader::sniffDelimiter($path);
         $rows = [];
         $first = true;
 
-        while (($data = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+        while (($data = fgetcsv($handle, 0, $delimiter, '"', '\\')) !== false) {
             if ($first) {
                 // Buang BOM UTF-8 pada header bila ada.
                 if ($data !== []) {

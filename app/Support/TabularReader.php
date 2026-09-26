@@ -63,6 +63,44 @@ class TabularReader
     }
 
     /**
+     * Deteksi pembatas kolom (koma / titik-koma / tab) dari baris pertama.
+     *
+     * Excel dengan locale Indonesia/Chines menyimpan CSV berpemisah ';' —
+     * tanpa deteksi ini seluruh baris dianggap satu kolom dan ditolak.
+     */
+    public static function sniffDelimiter(string $path): string
+    {
+        $handle = @fopen($path, 'rb');
+
+        if ($handle === false) {
+            return ',';
+        }
+
+        $line = '';
+
+        while (($l = fgets($handle)) !== false) {
+            if (trim($l) !== '') {
+                $line = $l;
+                break;
+            }
+        }
+
+        fclose($handle);
+
+        $line = (string) preg_replace('/^\xEF\xBB\xBF/', '', $line);
+
+        $counts = [
+            ',' => substr_count($line, ','),
+            ';' => substr_count($line, ';'),
+            "\t" => substr_count($line, "\t"),
+        ];
+        arsort($counts);
+        $best = (string) array_key_first($counts);
+
+        return $counts[$best] > 0 ? $best : ',';
+    }
+
+    /**
      * @return array<int, array<int, mixed>>
      */
     private static function csv(string $path): array
@@ -73,10 +111,11 @@ class TabularReader
             return [];
         }
 
+        $delimiter = self::sniffDelimiter($path);
         $rows = [];
         $first = true;
 
-        while (($data = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+        while (($data = fgetcsv($handle, 0, $delimiter, '"', '\\')) !== false) {
             if ($first && $data !== []) {
                 $data[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $data[0]);
                 $first = false;
