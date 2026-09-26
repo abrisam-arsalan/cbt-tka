@@ -103,16 +103,29 @@ const destroy = (user) => {
             </table>
         </div>
 
-        <!-- Pagination -->
-        <div v-if="users.links && users.links.length > 3" class="mt-4 flex justify-center gap-1">
-            <Link
-                v-for="link in users.links"
-                :key="link.label"
-                :href="link.url || '#'"
-                :class="link.active ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'"
-                class="rounded-lg px-3 py-1.5 text-sm"
-                v-html="link.label"
-            />
+        <!-- Footer: total siswa (kiri) + pagination (kanan) -->
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p class="text-sm text-slate-500">
+                Total <strong class="text-slate-700">{{ users.total ?? 0 }}</strong> siswa
+                <span v-if="(users.total ?? 0) > 0" class="text-slate-400">
+                    · menampilkan {{ users.from }}–{{ users.to }} dari halaman {{ users.current_page }}/{{ users.last_page }}
+                </span>
+            </p>
+
+            <div v-if="users.links && users.links.length > 3" class="flex gap-1">
+                <Link
+                    v-for="(link, i) in users.links"
+                    :key="i"
+                    :href="link.url || '#'"
+                    :disabled="!link.url"
+                    :class="[
+                        link.active ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200',
+                        !link.url ? 'opacity-50 cursor-not-allowed' : '',
+                    ]"
+                    class="rounded-lg px-3 py-1.5 text-sm"
+                    v-html="link.label"
+                />
+            </div>
         </div>
     </AdminLayout>
 </template>
