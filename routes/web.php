@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Student\AntiCheatController;
 use App\Http\Controllers\Student\DashboardController;
@@ -29,10 +30,18 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware('guest')->group(function () {
+    // Login siswa (publik — alamat dibagikan lewat kartu ujian).
     Route::get('login', [LoginController::class, 'show'])->name('login');
     Route::post('login', [LoginController::class, 'store'])
         ->middleware('throttle:login')
         ->name('login.attempt');
+
+    // Login admin — URL terpisah (/admin/login) agar siswa tidak mengetahui
+    // pintu masuk khusus panitia.
+    Route::get('admin/login', [AdminLoginController::class, 'show'])->name('admin.login');
+    Route::post('admin/login', [AdminLoginController::class, 'store'])
+        ->middleware('throttle:login')
+        ->name('admin.login.attempt');
 });
 
 Route::post('logout', [LoginController::class, 'destroy'])

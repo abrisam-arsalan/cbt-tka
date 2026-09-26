@@ -13,7 +13,8 @@ class AuthFlowTest extends TestCase
 
     public function test_guest_is_redirected_to_login(): void
     {
-        $this->get('/admin')->assertRedirect(route('login'));
+        // Area admin -> pintu login admin; area siswa -> login siswa.
+        $this->get('/admin')->assertRedirect(route('admin.login'));
         $this->get('/siswa/dashboard')->assertRedirect(route('login'));
     }
 
@@ -27,7 +28,7 @@ class AuthFlowTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->post('/login', [
+        $this->post('/admin/login', [
             'username' => 'admin.test',
             'password' => 'password123',
         ])->assertRedirect(route('admin.dashboard'));
@@ -35,6 +36,42 @@ class AuthFlowTest extends TestCase
         $this->actingAs($admin)
             ->get('/admin')
             ->assertOk();
+    }
+
+    public function test_admin_cannot_login_through_student_page(): void
+    {
+        User::create([
+            'username' => 'admin.test2',
+            'name' => 'Admin Test 2',
+            'password' => 'password123',
+            'role' => UserRole::Admin->value,
+            'is_active' => true,
+        ]);
+
+        $this->post('/login', [
+            'username' => 'admin.test2',
+            'password' => 'password123',
+        ])->assertSessionHasErrors('username');
+
+        $this->assertGuest();
+    }
+
+    public function test_siswa_cannot_login_through_admin_page(): void
+    {
+        User::create([
+            'username' => '0099009900',
+            'name' => 'Siswa Lintas Pintu',
+            'password' => '123456',
+            'role' => UserRole::Siswa->value,
+            'is_active' => true,
+        ]);
+
+        $this->post('/admin/login', [
+            'username' => '0099009900',
+            'password' => '123456',
+        ])->assertSessionHasErrors('username');
+
+        $this->assertGuest();
     }
 
     public function test_siswa_cannot_access_admin_area(): void

@@ -43,7 +43,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureUserHasRole::class,
         ]);
 
-        $middleware->redirectGuestsTo(fn () => route('login'));
+        // Tamu yang mengakses area admin diarahkan ke pintu login admin
+        // (/admin/login), bukan halaman login siswa — siswa tidak pernah
+        // melihat adanya halaman khusus panitia.
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('admin', 'admin/*')
+            ? route('admin.login')
+            : route('login'));
         $middleware->redirectUsersTo(function () {
             $user = auth()->user();
 

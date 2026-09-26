@@ -17,19 +17,58 @@ const clientConfig = computed(() => page.props.clientConfig);
 const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
 // ------------------------------------------------------------------
-// Navigasi soal
+// Navigasi soal & tanda ragu-ragu
 // ------------------------------------------------------------------
 const currentIndex = ref(0);
 const currentQuestion = computed(() => props.questions[currentIndex.value] ?? null);
 const totalQuestions = computed(() => props.questions.length);
-const gridOpen = ref(false);
+const listOpen = ref(false);
 
 const goTo = (index) => {
     if (index < 0 || index >= totalQuestions.value) return;
     currentIndex.value = index;
-    gridOpen.value = false;
+    listOpen.value = false;
     window.scrollTo({ top: 0 });
 };
+
+// Penanda "ragu-ragu" per soal — disimpan lokal (per attempt) agar tetap
+// ada walau halaman dimuat ulang / koneksi putus.
+const flagKey = computed(() => `cbt_flags_${props.attempt?.id ?? 0}`);
+const flagged = reactive({});
+
+const loadFlags = () => {
+    try {
+        Object.assign(flagged, JSON.parse(localStorage.getItem(flagKey.value) ?? '{}'));
+    } catch {
+        // abaikan storage korup
+    }
+};
+
+const persistFlags = () => {
+    try {
+        localStorage.setItem(flagKey.value, JSON.stringify(flagged));
+    } catch {
+        // private mode / storage penuh: flag bertahan di memori sesi ini
+    }
+};
+
+const toggleFlag = (questionId) => {
+    if (flagged[questionId]) {
+        delete flagged[questionId];
+    } else {
+        flagged[questionId] = true;
+    }
+    persistFlags();
+};
+
+const isFlagged = (questionId) => Boolean(flagged[questionId]);
+
+// Daftar { question, index } yang tercentang ragu-ragu.
+const flaggedQuestions = computed(() =>
+    props.questions
+        .map((question, index) => ({ question, index }))
+        .filter((entry) => isFlagged(entry.question.id)),
+);
 
 // ------------------------------------------------------------------
 // Status jawaban lokal: blank | saving | synced | queued | failed
@@ -365,7 +404,23 @@ function onWindowBlur() {
 // Submit
 // ------------------------------------------------------------------
 const showSubmitModal = ref(false);
+const showFlagModal = ref(false);
 const unansweredCount = computed(() => totalQuestions.value - answeredCount.value);
+
+// Klik "Kumpulkan": beri peringatan dulu bila masih ada soal ditandai
+// ragu-ragu, supaya siswa meninjau & melepas centangnya.
+const requestSubmit = () => {
+    if (flaggedQuestions.value.length > 0) {
+        showFlagModal.value = true;
+        return;
+    }
+    showSubmitModal.value = true;
+};
+
+const proceedToSubmit = () => {
+    showFlagModal.value = false;
+    showSubmitModal.value = true;
+};
 
 async function doSubmit() {
     if (submitted) return;
@@ -442,6 +497,7 @@ const gridClass = (question) => {
 // ------------------------------------------------------------------
 onMounted(() => {
     loadOutbox();
+    loadFlags();
 
     if (props.attempt) {
         clockTimer = setInterval(() => {
@@ -521,12 +577,58 @@ onBeforeUnmount(() => {
                         {{ syncLabel }}
                     </span>
 
-                    <button
-                        class="rounded-lg bg-danger-500 px-3 py-1.5 text-sm font-semibold text-white"
-                        @click="showSubmitModal = true"
-                    >
-                        Kumpulkan
-                    </button>
+                    <!-- Tombol Kumpulkan + dropdown Daftar Soal di bawahnya -->
+                    <div class="relative">
+                        <div class="flex items-center gap-2">
+                            <button
+                                class="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700"
+                                @click="listOpen = !listOpen"
+                            >
+                                Daftar Soal
+                            </button>
+                            <button
+                                class="rounded-lg bg-danger-500 px-3 py-1.5 text-sm font-semibold text-white"
+                                @click="requestSubmit"
+                            >
+                                Kumpulkan
+                            </button>
+                        </div>
+
+                        <div
+                            v-if="listOpen"
+                            class="absolute right-0 z-40 mt-2 max-h-[65vh] w-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
+                        >
+                            <div class="mb-2 flex items-center justify-between">
+                                <h3 class="text-sm font-semibold text-slate-900">Daftar Soal</h3>
+                                <button class="text-slate-400 hover:text-slate-600" @click="listOpen = false">✕</button>
+                            </div>
+
+                            <div class="grid grid-cols-6 gap-2">
+                                <button
+                                    v-for="(question, index) in questions"
+                                    :key="question.id"
+                                    class="relative flex h-10 items-center justify-center rounded-lg text-sm font-semibold"
+                                    :class="[
+                                        gridClass(question),
+                                        index === currentIndex ? 'ring-2 ring-brand-600 ring-offset-1' : '',
+                                        isFlagged(question.id) ? 'outline outline-2 outline-offset-1 outline-warning-500' : '',
+                                    ]"
+                                    @click="goTo(index)"
+                                >
+                                    {{ index + 1 }}
+                                    <span v-if="isFlagged(question.id)" class="absolute -right-1 -top-1 text-[10px]">🚩</span>
+                                </button>
+                            </div>
+
+                            <div class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                                <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-success-500"></span> Dijawab</span>
+                                <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-warning-500"></span> Menyimpan</span>
+                                <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-danger-500"></span> Gagal</span>
+                                <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-slate-300"></span> Belum</span>
+                                <span class="flex items-center gap-1"><span class="h-3 w-3 rounded border-2 border-warning-500 bg-white"></span> Ragu-ragu</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="h-1.5 w-full bg-slate-200">
@@ -654,7 +756,7 @@ onBeforeUnmount(() => {
                 </div>
             </main>
 
-            <!-- Bottom navigation -->
+            <!-- Bottom navigation: Sebelumnya - Ragu-ragu - Berikutnya -->
             <nav class="safe-bottom sticky bottom-0 z-30 border-t border-slate-200 bg-white">
                 <div class="flex items-center gap-2 px-4 py-3">
                     <button
@@ -665,14 +767,21 @@ onBeforeUnmount(() => {
                         ← Sebelumnya
                     </button>
 
-                    <button
-                        class="flex h-12 w-16 items-center justify-center rounded-xl bg-slate-200 font-semibold text-slate-700"
-                        @click="gridOpen = !gridOpen"
+                    <label
+                        class="flex h-12 shrink-0 cursor-pointer select-none items-center gap-2 rounded-xl px-3 text-sm font-semibold"
+                        :class="currentQuestion && isFlagged(currentQuestion.id)
+                            ? 'bg-warning-100 text-warning-700 ring-1 ring-warning-500'
+                            : 'bg-slate-100 text-slate-600'"
                     >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
+                        <input
+                            v-if="currentQuestion"
+                            type="checkbox"
+                            class="h-4 w-4 accent-amber-500"
+                            :checked="isFlagged(currentQuestion.id)"
+                            @change="toggleFlag(currentQuestion.id)"
+                        />
+                        🚩 Ragu-ragu
+                    </label>
 
                     <button
                         v-if="currentIndex < totalQuestions - 1"
@@ -684,41 +793,45 @@ onBeforeUnmount(() => {
                     <button
                         v-else
                         class="h-12 flex-1 rounded-xl bg-success-600 font-semibold text-white"
-                        @click="showSubmitModal = true"
+                        @click="requestSubmit"
                     >
                         Selesai ✓
                     </button>
                 </div>
             </nav>
 
-            <!-- Grid navigasi -->
-            <div v-if="gridOpen" class="fixed inset-0 z-40 flex items-end justify-center bg-black/50" @click.self="gridOpen = false">
-                <div class="safe-bottom max-h-[70vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-4">
-                    <div class="mb-3 flex items-center justify-between">
-                        <h3 class="font-semibold text-slate-900">Navigasi Soal</h3>
-                        <button class="text-slate-500" @click="gridOpen = false">✕</button>
-                    </div>
-
-                    <div class="grid grid-cols-6 gap-2">
+            <!-- Peringatan soal ragu-ragu sebelum mengumpulkan -->
+            <div v-if="showFlagModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                <div class="w-full max-w-sm rounded-2xl bg-white p-6">
+                    <div class="mb-3 text-4xl">🚩</div>
+                    <h3 class="mb-2 text-lg font-bold text-slate-900">Masih Ada Soal Ragu-ragu</h3>
+                    <p class="mb-3 text-sm text-slate-600">
+                        Tinjau kembali soal yang masih tercentang <strong>ragu-ragu</strong> dan
+                        lepaskan centangnya sebelum mengumpulkan:
+                    </p>
+                    <div class="mb-4 flex flex-wrap gap-2">
                         <button
-                            v-for="(question, index) in questions"
-                            :key="question.id"
-                            class="flex h-11 items-center justify-center rounded-lg text-sm font-semibold"
-                            :class="[
-                                gridClass(question),
-                                index === currentIndex ? 'ring-2 ring-brand-600 ring-offset-2' : '',
-                            ]"
-                            @click="goTo(index)"
+                            v-for="entry in flaggedQuestions"
+                            :key="entry.question.id"
+                            class="h-9 w-9 rounded-lg bg-warning-100 text-sm font-bold text-warning-700 ring-1 ring-warning-500"
+                            @click="goTo(entry.index); showFlagModal = false"
                         >
-                            {{ index + 1 }}
+                            {{ entry.index + 1 }}
                         </button>
                     </div>
-
-                    <div class="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
-                        <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-success-500"></span> Dijawab</span>
-                        <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-warning-500"></span> Menyimpan</span>
-                        <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-danger-500"></span> Gagal</span>
-                        <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-slate-300"></span> Belum</span>
+                    <div class="flex gap-2">
+                        <button
+                            class="h-12 flex-1 rounded-xl bg-slate-100 font-semibold text-slate-700"
+                            @click="showFlagModal = false"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            class="h-12 flex-1 rounded-xl bg-brand-600 font-semibold text-white"
+                            @click="proceedToSubmit"
+                        >
+                            Lanjut Kumpulkan
+                        </button>
                     </div>
                 </div>
             </div>
