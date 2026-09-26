@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExamController;
 use App\Http\Controllers\Admin\HubController;
 use App\Http\Controllers\Admin\ImportController;
+use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\MonitoringController;
 use App\Http\Controllers\Admin\ParticipantController;
 use App\Http\Controllers\Admin\ProfileController;
@@ -147,6 +148,11 @@ Route::middleware(['auth', 'role:admin', 'throttle:admin'])->group(function () {
     // Profil admin yang sedang login (nama tampil + password)
     Route::get('profil', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('profil', [ProfileController::class, 'update'])->name('profile.update');
+
+    // Upload gambar soal (dipakai form edit bank soal & halaman soal ujian)
+    Route::post('media/gambar', [MediaController::class, 'store'])
+        ->middleware('throttle:30,1')
+        ->name('media.upload');
 
     // Audit log (read-only)
     Route::get('audit-log', [AuditLogController::class, 'index'])->name('audit-logs.index');

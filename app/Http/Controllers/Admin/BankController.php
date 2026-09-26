@@ -76,18 +76,25 @@ class BankController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'class_id' => ['nullable', 'integer', 'exists:classes,id'],
-            'file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls', 'max:5120'],
+            'file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls,zip', 'max:20480'],
         ], [
-            'file.mimes' => 'File harus berformat CSV atau XLSX.',
-            'file.max' => 'Ukuran file maksimum 5 MB.',
+            'file.mimes' => 'File harus berformat CSV, XLSX, atau ZIP (template + gambar).',
+            'file.max' => 'Ukuran file maksimum 20 MB.',
         ]);
 
-        $result = $this->imports->import(
-            $request->file('file'),
-            $validated['name'],
-            $validated['class_id'] ?? null,
-            $request->user(),
-        );
+        try {
+            $result = $this->imports->import(
+                $request->file('file'),
+                $validated['name'],
+                $validated['class_id'] ?? null,
+                $request->user(),
+            );
+        } catch (\RuntimeException $e) {
+            return redirect()
+                ->route('admin.bank.create')
+                ->withInput()
+                ->withErrors(['file' => $e->getMessage()]);
+        }
 
         if ($result['batch'] === null) {
             $request->session()->put('import_errors', $result['errors']);

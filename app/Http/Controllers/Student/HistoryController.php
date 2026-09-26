@@ -84,6 +84,7 @@ class HistoryController extends Controller
                     'type' => $question->type->value,
                     'type_label' => $question->type->label(),
                     'question_text' => $question->question_text,
+                    'media_url' => $question->media_url,
                     'answered' => $answer !== null && ! $answer->isBlank(),
                     'options' => $question->options->map(fn ($o) => [
                         'id' => (int) $o->id,

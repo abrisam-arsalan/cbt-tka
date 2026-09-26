@@ -20,9 +20,16 @@ class TabularReader
      */
     public static function rows(UploadedFile $file): array
     {
-        $path = $file->getPathname();
-        $ext = strtolower($file->getClientOriginalExtension());
+        return self::rowsFromPath($file->getPathname(), strtolower($file->getClientOriginalExtension()));
+    }
 
+    /**
+     * Varian path — dipakai juga untuk file hasil ekstrak ZIP.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function rowsFromPath(string $path, string $ext): array
+    {
         $raw = in_array($ext, ['xlsx', 'xls'], true)
             ? self::spreadsheet($path)
             : self::csv($path);

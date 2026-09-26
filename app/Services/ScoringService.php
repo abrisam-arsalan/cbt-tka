@@ -177,6 +177,7 @@ class ScoringService
             'type_label' => $question->type->label(),
             'question_text' => $question->question_text,
             'stimulus' => $question->stimulus,
+            'media_url' => $question->media_url,
             'answered' => $answered,
             'is_correct' => $isCorrect,
             'student_answer' => $this->humanizeAnswer($question, $answer),

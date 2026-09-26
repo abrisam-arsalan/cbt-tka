@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 
 const props = defineProps({
@@ -38,6 +38,57 @@ const addOption = () => options.push({ label: String.fromCharCode(65 + options.l
 const removeOption = (i) => options.splice(i, 1);
 const addPair = () => pairs.push({ left_text: '', right_text: '' });
 const removePair = (i) => pairs.splice(i, 1);
+
+// ------------------------------------------------------------------
+// Upload gambar soal: file -> endpoint admin.media.upload -> media_url
+// ------------------------------------------------------------------
+const imageInput = ref(null);
+const uploading = ref(false);
+const uploadError = ref('');
+
+const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+const pickImage = () => imageInput.value?.click();
+
+const onImageSelected = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = ''; // agar file sama bisa dipilih ulang
+    if (!file) return;
+
+    uploading.value = true;
+    uploadError.value = '';
+
+    try {
+        const body = new FormData();
+        body.append('file', file);
+
+        const response = await fetch(route('admin.media.upload'), {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            uploadError.value = data?.errors?.file?.[0] ?? 'Gagal mengunggah gambar.';
+        } else {
+            form.media_url = data.url;
+        }
+    } catch {
+        uploadError.value = 'Gagal mengunggah gambar. Periksa koneksi Anda.';
+    } finally {
+        uploading.value = false;
+    }
+};
+
+const removeImage = () => {
+    form.media_url = '';
+};
 
 const submit = () => {
     const payload = {
@@ -88,6 +139,32 @@ const submit = () => {
                     <label class="mb-1 block text-sm font-semibold text-slate-700">Pertanyaan</label>
                     <textarea v-model="form.question_text" rows="3" required class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"></textarea>
                     <p v-if="form.errors.question_text" class="mt-1 text-xs text-danger-600">{{ form.errors.question_text }}</p>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-sm font-semibold text-slate-700">Gambar Soal (opsional)</label>
+                    <input ref="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" @change="onImageSelected" />
+
+                    <div v-if="form.media_url" class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <img :src="form.media_url" alt="Gambar soal" class="max-h-56 rounded-lg" />
+                        <div class="mt-2 flex items-center gap-2">
+                            <button type="button" class="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white" :disabled="uploading" @click="pickImage">
+                                {{ uploading ? 'Mengunggah...' : 'Ganti Gambar' }}
+                            </button>
+                            <button type="button" class="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700" @click="removeImage">
+                                Hapus Gambar
+                            </button>
+                        </div>
+                    </div>
+                    <div v-else class="flex items-center gap-3">
+                        <button type="button" class="rounded-lg border-2 border-dashed border-slate-300 px-4 py-3 text-sm font-semibold text-slate-600 hover:border-brand-400 hover:text-brand-600" :disabled="uploading" @click="pickImage">
+                            {{ uploading ? 'Mengunggah...' : '🖼 Unggah Gambar' }}
+                        </button>
+                        <span class="text-xs text-slate-400">PNG/JPG/WEBP/GIF, maks 4 MB</span>
+                    </div>
+
+                    <p v-if="uploadError" class="mt-1 text-xs text-danger-600">{{ uploadError }}</p>
+                    <p v-if="form.errors.media_url" class="mt-1 text-xs text-danger-600">{{ form.errors.media_url }}</p>
                 </div>
 
                 <div v-if="form.type === 'pg' || form.type === 'pgk' || form.type === 'boolean'">

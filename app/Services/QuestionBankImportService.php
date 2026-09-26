@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Support\TabularReader;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Impor massal Bank Soal dari SATU file yang boleh berisi SEMUA jenis soal
@@ -61,11 +62,148 @@ class QuestionBankImportService
     /**
      * Parse, validasi, dan tulis satu batch bank soal.
      *
+     * Format file: CSV/XLSX biasa, ATAU ZIP berisi satu file CSV/XLSX
+     * (template) + gambar-gambar yang dirujuk kolom `gambar`/`media_url`
+     * (mis. "peta.png" atau "gambar/peta.png" di dalam ZIP).
+     *
      * @return array{batch: ?QuestionBatch, imported: int, errors: array<int, array<string, mixed>>}
      */
     public function import(UploadedFile $file, string $name, ?int $classId, User $actor): array
     {
-        $rows = TabularReader::rows($file);
+        $imageMap = [];
+        $extractDir = null;
+
+        if (strtolower($file->getClientOriginalExtension()) === 'zip') {
+            [$rows, $extractDir] = $this->readZip($file);
+            $imageMap = $this->collectZipImages($extractDir);
+        } else {
+            $rows = TabularReader::rows($file);
+        }
+
+        try {
+            return $this->importRows($rows, $imageMap, $name, $classId, $actor);
+        } finally {
+            if ($extractDir !== null && is_dir($extractDir)) {
+                $this->deleteDirectory($extractDir);
+            }
+        }
+    }
+
+    /**
+     * Ekstrak ZIP dan baca file tabular di dalamnya.
+     *
+     * @return array{0: array<int, array<string, mixed>>, 1: string}
+     */
+    private function readZip(UploadedFile $file): array
+    {
+        $zip = new \ZipArchive;
+
+        if ($zip->open($file->getPathname()) !== true) {
+            throw new \RuntimeException('File ZIP tidak dapat dibuka.');
+        }
+
+        $extractDir = storage_path('app/tmp/bank-impor-'.bin2hex(random_bytes(6)));
+        mkdir($extractDir, 0755, true);
+        $zip->extractTo($extractDir);
+        $zip->close();
+
+        // Cari CSV/XLSX: di root hasil ekstrak dulu, lalu satu level subfolder.
+        $candidates = array_merge(
+            glob($extractDir.'/*.{csv,txt,xlsx,xls}', GLOB_BRACE) ?: [],
+            glob($extractDir.'/*/*.{csv,txt,xlsx,xls}', GLOB_BRACE) ?: [],
+        );
+
+        if ($candidates === []) {
+            throw new \RuntimeException('ZIP harus memuat satu file template CSV/XLSX.');
+        }
+
+        $tabular = $candidates[0];
+        $rows = TabularReader::rowsFromPath($tabular, strtolower(pathinfo($tabular, PATHINFO_EXTENSION)));
+
+        return [$rows, $extractDir];
+    }
+
+    /**
+     * Peta nama-file gambar (huruf kecil, dengan & tanpa path) -> path absolut.
+     *
+     * @return array<string, string>
+     */
+    private function collectZipImages(string $extractDir): array
+    {
+        $map = [];
+        $allowed = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($extractDir, \FilesystemIterator::SKIP_DOTS),
+        );
+
+        foreach ($iterator as $splFile) {
+            if (! $splFile->isFile()) {
+                continue;
+            }
+
+            $ext = strtolower($splFile->getExtension());
+
+            if (! in_array($ext, $allowed, true)) {
+                continue;
+            }
+
+            $relative = strtolower(trim(str_replace('\\', '/', substr($splFile->getPathname(), strlen($extractDir) + 1)), '/'));
+            $map[$relative] = $splFile->getPathname();
+            $map[basename($relative)] ??= $splFile->getPathname();
+        }
+
+        return $map;
+    }
+
+    /**
+     * Simpan gambar dari ZIP ke disk public; kembalikan URL-nya.
+     * Penamaan berdasarkan hash isi => impor ulang file yang sama tidak menduplikasi.
+     */
+    private function storeZipImage(string $sourcePath): ?string
+    {
+        $ext = strtolower(pathinfo($sourcePath, PATHINFO_EXTENSION));
+        $hash = sha1_file($sourcePath);
+
+        if ($hash === false || filesize($sourcePath) > 8 * 1024 * 1024) {
+            return null;
+        }
+
+        $relative = 'soal/impor/'.substr($hash, 0, 2).'/'.$hash.'.'.$ext;
+
+        if (! Storage::disk('public')->exists($relative)) {
+            $target = Storage::disk('public')->path($relative);
+            @mkdir(dirname($target), 0755, true);
+
+            if (! copy($sourcePath, $target)) {
+                return null;
+            }
+        }
+
+        return Storage::disk('public')->url($relative);
+    }
+
+    private function deleteDirectory(string $dir): void
+    {
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST,
+        );
+
+        foreach ($iterator as $item) {
+            $item->isDir() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
+        }
+
+        @rmdir($dir);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     * @param  array<string, string>  $imageMap
+     * @return array{batch: ?QuestionBatch, imported: int, errors: array<int, array<string, mixed>>}
+     */
+    private function importRows(array $rows, array $imageMap, string $name, ?int $classId, User $actor): array
+    {
 
         // Peta kelas (nama kecil -> id) untuk resolusi kolom `kelas`.
         $classMap = SchoolClass::query()->get()
@@ -79,6 +217,28 @@ class QuestionBankImportService
             $rowNumber = $index + 2;
             $normalized = $this->normalizeRow($row, $classMap, $classId);
             $messages = $this->validateRow($normalized);
+
+            // Kolom gambar: URL http(s) dipakai apa adanya; nama file
+            // diresolved dari ZIP (bila impor lewat ZIP).
+            $media = trim((string) ($normalized['media_url'] ?? ''));
+
+            if ($media !== '' && ! preg_match('#^https?://#i', $media)) {
+                $media = ltrim(str_replace('\\', '/', $media), '/');
+                $source = $imageMap[strtolower($media)] ?? $imageMap[basename(strtolower($media))] ?? null;
+
+                if ($source === null) {
+                    $messages[] = $imageMap === []
+                        ? "Gambar \"{$media}\" tidak ditemukan — unggah ZIP berisi template + file gambar tsb., atau isi kolom dengan URL http(s)."
+                        : "Gambar \"{$media}\" tidak ada di dalam ZIP.";
+                } else {
+                    $url = $this->storeZipImage($source);
+                    $normalized['media_url'] = $url;
+
+                    if ($url === null) {
+                        $messages[] = "Gambar \"{$media}\" gagal disimpan (korup atau melebihi 8 MB).";
+                    }
+                }
+            }
 
             if ($messages !== []) {
                 $errors[] = ['row' => $rowNumber, 'raw' => $normalized, 'errors' => $messages];

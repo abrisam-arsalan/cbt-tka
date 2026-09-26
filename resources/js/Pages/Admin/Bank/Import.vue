@@ -27,7 +27,7 @@ const onFileChange = (event) => {
 
 const submit = () => {
     if (!form.file) {
-        alert('Pilih file CSV atau XLSX terlebih dahulu.');
+        alert('Pilih file CSV, XLSX, atau ZIP terlebih dahulu.');
         return;
     }
     form.post(route('admin.bank.store'), {
@@ -79,8 +79,13 @@ const submit = () => {
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-sm font-semibold text-slate-700">File CSV / XLSX</label>
-                        <input ref="fileInput" type="file" accept=".csv,.xlsx,.xls,.txt" class="block w-full cursor-pointer rounded-xl border border-slate-200 text-sm text-slate-600 file:mr-3 file:rounded-l-xl file:border-0 file:bg-brand-50 file:py-3 file:pl-4 file:pr-3 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100" @change="onFileChange" />
+                        <label class="mb-1 block text-sm font-semibold text-slate-700">File CSV / XLSX / ZIP</label>
+                        <input ref="fileInput" type="file" accept=".csv,.xlsx,.xls,.txt,.zip" class="block w-full cursor-pointer rounded-xl border border-slate-200 text-sm text-slate-600 file:mr-3 file:rounded-l-xl file:border-0 file:bg-brand-50 file:py-3 file:pl-4 file:pr-3 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100" @change="onFileChange" />
+                        <p class="mt-1 text-xs text-slate-400">
+                            Untuk soal bergambar: isikan nama file (mis. <span class="font-mono">peta.png</span>) di kolom
+                            <span class="font-mono">media_url</span> dan unggah sebagai <strong>ZIP</strong> berisi template +
+                            gambar-gambarnya (maks 20 MB). URL gambar http(s) juga diterima.
+                        </p>
                         <p v-if="form.errors.file" class="mt-1 text-xs text-danger-600">{{ form.errors.file }}</p>
                     </div>
 

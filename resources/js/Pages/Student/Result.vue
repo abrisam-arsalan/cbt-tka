@@ -78,6 +78,7 @@ const statusOf = (detail) => {
                         </span>
                     </div>
 
+                    <img v-if="detail.media_url" :src="detail.media_url" alt="Gambar soal" class="mb-2 max-h-56 rounded-lg" />
                     <p class="mb-3 whitespace-pre-line text-sm text-slate-800">{{ detail.question_text }}</p>
 
                     <!-- PG / PGK / Boolean -->
