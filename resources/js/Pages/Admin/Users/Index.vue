@@ -3,7 +3,7 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import ImportPanel from '@/Admin/Shared/ImportPanel.vue';
 
-defineProps({
+const props = defineProps({
     title: String,
     users: Object,
     filters: Object,
