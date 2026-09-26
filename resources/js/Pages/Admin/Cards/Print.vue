@@ -54,10 +54,26 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <div class="rounded-lg bg-slate-100 px-3 py-2 text-center">
+                <div class="mb-2 rounded-lg bg-slate-100 px-3 py-2 text-center">
                     <p class="text-xs text-slate-400">Token Ujian</p>
                     <p class="text-lg font-bold tracking-widest text-slate-900">{{ card.token || '—' }}</p>
                 </div>
+
+                <!-- Akun login: username (NISN) dan PIN dicetak terpisah;
+                     PIN angka, username NISN — keduanya berbeda. -->
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="rounded-lg border border-slate-300 px-3 py-2 text-center">
+                        <p class="text-xs text-slate-400">Username (NISN)</p>
+                        <p class="font-mono text-sm font-bold text-slate-900">{{ card.username || '—' }}</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-300 px-3 py-2 text-center">
+                        <p class="text-xs text-slate-400">PIN Login</p>
+                        <p class="font-mono text-sm font-bold text-slate-900">{{ card.login_pin || 'reset PIN' }}</p>
+                    </div>
+                </div>
+                <p v-if="card.login_url" class="mt-1 break-all text-center text-[10px] text-slate-400">
+                    Login dari HP/PC: {{ card.login_url }}
+                </p>
             </div>
         </div>
     </div>

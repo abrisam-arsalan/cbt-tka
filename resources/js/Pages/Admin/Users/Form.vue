@@ -1,5 +1,6 @@
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
+import { watch } from 'vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 
 const props = defineProps({
@@ -23,6 +24,17 @@ const form = useForm({
     is_active: props.user?.is_active ?? true,
 });
 
+// Username login siswa = NISN: sinkronkan otomatis selama username
+// belum diedit manual.
+let usernameEdited = Boolean(props.user?.username && props.user.username !== props.user.nisn);
+
+watch(() => form.nisn, (value, old) => {
+    if (usernameEdited) return;
+    if (!value || form.username === '' || form.username === old) {
+        form.username = value ?? '';
+    }
+});
+
 const submit = () => {
     if (props.edit) {
         form.put(route('admin.users.update', props.user.id));
@@ -41,8 +53,9 @@ const submit = () => {
 
             <form @submit.prevent="submit" class="space-y-4 rounded-2xl bg-white p-6 shadow-sm">
                 <div>
-                    <label class="mb-1 block text-sm font-semibold text-slate-700">Username</label>
-                    <input v-model="form.username" type="text" required class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" />
+                    <label class="mb-1 block text-sm font-semibold text-slate-700">Username (login = NISN)</label>
+                    <input v-model="form.username" type="text" @input="usernameEdited = true" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" placeholder="Otomatis dari NISN" />
+                    <p class="mt-1 text-xs text-slate-400">Username siswa memakai NISN — biarkan otomatis kecuali perlu beda.</p>
                     <p v-if="form.errors.username" class="mt-1 text-xs text-danger-600">{{ form.errors.username }}</p>
                 </div>
 
@@ -60,15 +73,20 @@ const submit = () => {
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="mb-1 block text-sm font-semibold text-slate-700">Password</label>
-                        <input v-model="form.password" type="password" :required="!edit" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" />
+                        <label class="mb-1 block text-sm font-semibold text-slate-700">PIN (angka)</label>
+                        <input v-model="form.password" type="password" inputmode="numeric" pattern="\d{4,8}" maxlength="8" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" :placeholder="edit ? 'Kosongkan = PIN lama' : 'Kosongkan = PIN acak'" />
                         <p v-if="form.errors.password" class="mt-1 text-xs text-danger-600">{{ form.errors.password }}</p>
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-semibold text-slate-700">Konfirmasi</label>
-                        <input v-model="form.password_confirmation" type="password" :required="!edit" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" />
+                        <label class="mb-1 block text-sm font-semibold text-slate-700">Konfirmasi PIN</label>
+                        <input v-model="form.password_confirmation" type="password" inputmode="numeric" maxlength="8" :required="Boolean(form.password)" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" :disabled="!form.password" />
                     </div>
                 </div>
+                <p class="-mt-2 text-xs text-slate-400">
+                    {{ edit
+                        ? 'Isi hanya bila ingin mengganti PIN. PIN harus angka 4–8 digit dan berbeda dari username (NISN).'
+                        : 'Kosongkan untuk PIN acak 6 digit — otomatis tercetak di kartu ujian siswa.' }}
+                </p>
 
                 <div>
                     <label class="mb-1 block text-sm font-semibold text-slate-700">Kelas</label>
@@ -81,8 +99,9 @@ const submit = () => {
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="mb-1 block text-sm font-semibold text-slate-700">NISN (opsional)</label>
-                        <input v-model="form.nisn" type="text" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" />
+                        <label class="mb-1 block text-sm font-semibold text-slate-700">NISN</label>
+                        <input v-model="form.nisn" type="text" inputmode="numeric" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" placeholder="mis. 0011223344" />
+                        <p class="mt-1 text-xs text-slate-400">Dipakai sebagai username login siswa.</p>
                         <p v-if="form.errors.nisn" class="mt-1 text-xs text-danger-600">{{ form.errors.nisn }}</p>
                     </div>
                     <div>

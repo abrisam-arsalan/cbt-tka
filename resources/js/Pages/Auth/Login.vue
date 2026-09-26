@@ -38,14 +38,14 @@ const submit = () => {
                     <img src="/images/logo.png" alt="Logo" class="h-full w-full object-contain" />
                 </div>
                 <h1 class="text-2xl font-bold tracking-tight text-slate-900">Panglima CBT</h1>
-                <p class="mt-1 text-sm text-slate-500">Masuk untuk memulai ujian Anda</p>
+                <p class="mt-1 text-sm text-slate-500">Masuk memakai akun pada kartu ujian — bisa dari HP juga</p>
             </div>
 
             <!-- Card login -->
             <div class="rounded-3xl border border-white/60 bg-white/80 p-8 shadow-xl shadow-brand-900/5 backdrop-blur-sm sm:p-10">
                 <form @submit.prevent="submit" class="space-y-5">
                     <div>
-                        <label class="mb-1.5 block text-sm font-semibold text-slate-700">Username</label>
+                        <label class="mb-1.5 block text-sm font-semibold text-slate-700">Username (NISN)</label>
                         <div class="relative">
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -59,14 +59,14 @@ const submit = () => {
                                 autocomplete="username"
                                 class="block w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pl-11 pr-4 text-base text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
                                 :class="{ 'border-danger-500': form.errors.username }"
-                                placeholder="Masukkan username"
+                                placeholder="mis. 0011223344"
                             />
                         </div>
                         <p v-if="form.errors.username" class="mt-1.5 text-sm text-danger-600">{{ form.errors.username }}</p>
                     </div>
 
                     <div>
-                        <label class="mb-1.5 block text-sm font-semibold text-slate-700">Password</label>
+                        <label class="mb-1.5 block text-sm font-semibold text-slate-700">PIN</label>
                         <div class="relative">
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -77,10 +77,11 @@ const submit = () => {
                                 v-model="form.password"
                                 :type="showPassword ? 'text' : 'password'"
                                 required
+                                inputmode="numeric"
                                 autocomplete="current-password"
                                 class="block w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pl-11 pr-11 text-base text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
                                 :class="{ 'border-danger-500': form.errors.password }"
-                                placeholder="Masukkan password"
+                                placeholder="Masukkan PIN dari kartu ujian"
                             />
                             <button
                                 type="button"

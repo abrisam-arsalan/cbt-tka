@@ -18,7 +18,7 @@ use Illuminate\Notifications\Notifiable;
     'username', 'name', 'email', 'password', 'role',
     'class_id', 'nisn', 'phone', 'is_active',
 ])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'pin_cipher'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -34,6 +34,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'pin_cipher' => 'encrypted',
             'role' => UserRole::class,
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',

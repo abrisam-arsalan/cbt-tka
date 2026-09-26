@@ -19,7 +19,7 @@ class QuestionSeeder extends Seeder
         $service = app(QuestionBankImportService::class);
 
         $this->importBatch($service, $admin, 'Matematika', 1, [
-            ['pg', 'Kelas 7', '', 'Berapakah hasil dari 2 + 2 × 3?', '', '4', '8', '12', '6', '10', 'D', '', '', '', '', '', '', '', '', '', '', 1],
+            ['pg', 'Kelas 7', '', 'Berapakah hasil dari 2 + 2 × 3?', '', '4', '8', '12', '6', '10', 'B', '', '', '', '', '', '', '', '', '', '', 1],
             ['pgk', 'Kelas 7', '', 'Manakah bilangan prima? (pilih semua)', '', '2', '3', '4', '5', '9', 'A,B,D', '', '', '', '', '', '', '', '', '', '', 1],
             ['boolean', 'Kelas 7', '', 'Setiap bilangan prima adalah ganjil.', '', '', '', '', '', '', 'Salah', '', '', '', '', '', '', '', '', '', '', 1],
             ['matching', 'Kelas 7', '', 'Pasangkan ibu kota dengan negaranya.', '', '', '', '', '', '', '', 'Indonesia', 'Jakarta', 'Jepang', 'Tokyo', 'Prancis', 'Paris', 'Italia', 'Roma', '', '', 1],

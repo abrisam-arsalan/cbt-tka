@@ -22,8 +22,11 @@ class StoreUserRequest extends FormRequest
         $userId = (int) $this->route('user')?->id;
 
         return [
+            // Username login siswa = NISN. Boleh dikosongkan bila NISN diisi
+            // (UserController akan memakainya sebagai username).
             'username' => [
-                'required', 'string', 'max:64',
+                $isUpdate ? 'sometimes' : 'required_without:nisn',
+                'string', 'max:64',
                 Rule::unique('users', 'username')->ignore($isUpdate ? $userId : null),
             ],
             'name' => ['required', 'string', 'max:255'],
@@ -31,13 +34,14 @@ class StoreUserRequest extends FormRequest
                 'nullable', 'email', 'max:255',
                 Rule::unique('users', 'email')->ignore($isUpdate ? $userId : null),
             ],
-            'password' => $isUpdate
-                ? ['nullable', 'string', 'min:6', 'confirmed']
-                : ['required', 'string', 'min:6', 'confirmed'],
+            // Password siswa adalah PIN numerik. Kosong saat dibuat => digenerate
+            // otomatis 6 digit oleh PinService ( tercetak di kartu ujian).
+            'password' => ['nullable', 'string', 'regex:/^\d{4,8}$/', 'confirmed', 'different:username'],
             'role' => ['required', Rule::in(UserRole::values())],
             'class_id' => ['nullable', 'integer', 'exists:classes,id'],
             'nisn' => [
-                'nullable', 'string', 'max:32',
+                $isUpdate ? 'nullable' : 'required_without:username',
+                'string', 'max:32', 'regex:/^\d+$/',
                 Rule::unique('users', 'nisn')->ignore($isUpdate ? $userId : null),
             ],
             'phone' => ['nullable', 'string', 'max:32'],
@@ -48,10 +52,15 @@ class StoreUserRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'username.required_without' => 'Isi NISN (username login memakai NISN) atau username secara manual.',
             'username.unique' => 'Username ini sudah dipakai akun lain.',
             'email.unique' => 'Email ini sudah dipakai akun lain.',
+            'nisn.required_without' => 'Isi username atau NISN.',
+            'nisn.regex' => 'NISN harus berupa angka.',
             'nisn.unique' => 'NISN ini sudah terdaftar di akun lain.',
-            'password.confirmed' => 'Konfirmasi password tidak cocok.',
+            'password.regex' => 'PIN siswa harus berupa 4-8 digit angka.',
+            'password.confirmed' => 'Konfirmasi PIN tidak cocok.',
+            'password.different' => 'PIN tidak boleh sama dengan username.',
         ];
     }
 }

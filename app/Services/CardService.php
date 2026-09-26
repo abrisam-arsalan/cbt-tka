@@ -29,6 +29,7 @@ class CardService
     public function __construct(
         private readonly AuditLogService $audit,
         private readonly SettingService $settings,
+        private readonly PinService $pins,
     ) {}
 
     /**
@@ -94,7 +95,12 @@ class CardService
             'school_city' => $this->settings->get('app.school_city') ?: '',
             'logo_url' => $this->resolveLogoUrl(),
             'student_name' => $participant->user?->name ?? '(siswa terhapus)',
+            // Akun login tercetak di kartu: username (NISN) + PIN.
+            // PIN tidak tersedia utk akun lama yang belum pernah reset —
+            // admin bisa reset PIN dari menu Siswa bila pin_cipher kosong.
             'username' => $participant->user?->username,
+            'login_pin' => $this->pins->plain($participant->user),
+            'login_url' => $this->loginUrl(),
             'nisn' => $participant->user?->nisn,
             'class_name' => $participant->user?->schoolClass?->name ?? '-',
             'exam_title' => $participant->exam?->title ?? '(ujian terhapus)',
@@ -164,6 +170,19 @@ class CardService
         );
 
         return (new Writer($renderer))->writeString($url);
+    }
+
+    /**
+     * URL halaman login — dicetak sbg teks di kartu agar bisa dibuka/diketik
+     * dari HP siswa (di luar PC laboratorium sekolah).
+     */
+    private function loginUrl(): string
+    {
+        try {
+            return URL::route('login');
+        } catch (\Throwable) {
+            return URL::to('/login');
+        }
     }
 
     private function joinUrl(Exam $exam, string $formattedToken): string

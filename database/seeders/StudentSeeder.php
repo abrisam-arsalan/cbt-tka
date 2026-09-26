@@ -2,32 +2,48 @@
 
 namespace Database\Seeders;
 
+use App\Models\SchoolClass;
 use App\Models\User;
+use App\Services\PinService;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
+/**
+ * Contoh akun siswa.
+ *
+ * Aturan akun login (dicetak di kartu ujian):
+ *  - username = NISN (murni, tanpa prefix);
+ *  - password = PIN 6 digit ANGKA acak per siswa, dijamin beda dari username.
+ */
 class StudentSeeder extends Seeder
 {
     public function run(): void
     {
+        $pins = app(PinService::class);
+
         $students = [
-            ['username' => 'siswa01', 'name' => 'Andi Pratama'],
-            ['username' => 'siswa02', 'name' => 'Budi Santoso'],
-            ['username' => 'siswa03', 'name' => 'Citra Dewi'],
-            ['username' => 'siswa04', 'name' => 'Dian Permata'],
-            ['username' => 'siswa05', 'name' => 'Eko Prasetyo'],
+            ['nisn' => '0010001001', 'name' => 'Andi Pratama', 'class' => 'Kelas 7'],
+            ['nisn' => '0010001002', 'name' => 'Budi Santoso', 'class' => 'Kelas 7'],
+            ['nisn' => '0010001003', 'name' => 'Citra Dewi', 'class' => 'Kelas 7'],
+            ['nisn' => '0010001004', 'name' => 'Dian Permata', 'class' => 'Kelas 7'],
+            ['nisn' => '0010001005', 'name' => 'Eko Prasetyo', 'class' => 'Kelas 7'],
         ];
 
-        foreach ($students as $i => $data) {
-            User::create([
-                'username' => $data['username'],
+        foreach ($students as $data) {
+            $class = SchoolClass::query()->where('name', $data['class'])->first();
+
+            $user = new User([
+                'username' => $data['nisn'], // username = NISN
                 'name' => $data['name'],
+                'nisn' => $data['nisn'],
                 'email' => null,
-                'password' => Hash::make('siswa123'),
                 'role' => 'siswa',
-                'class_id' => ($i % 3) + 1, // 1,2,3,1,2 -> Kelas 7,8,9
+                'class_id' => $class?->id,
                 'is_active' => true,
             ]);
+
+            $pin = $pins->generate($user->username);
+            $pins->apply($user, $pin);
+            $user->save();
         }
     }
 }

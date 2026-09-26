@@ -19,15 +19,10 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
  */
 class BulkImportService
 {
-    public function __construct(private readonly AuditLogService $audit) {}
-
-    /**
-     * Password default untuk akun siswa yang barisnya tidak mengisi kolom password.
-     */
-    private function defaultStudentPassword(): string
-    {
-        return (string) (env('CBT_IMPORT_DEFAULT_PASSWORD') ?: 'siswa123');
-    }
+    public function __construct(
+        private readonly AuditLogService $audit,
+        private readonly PinService $pins,
+    ) {}
 
     // ------------------------------------------------------------------
     // KELAS
@@ -153,10 +148,12 @@ class BulkImportService
 
     public function downloadStudentTemplate(): string
     {
+        // username dikosongkan => otomatis memakai NISN.
+        // pin dikosongkan => sistem generate PIN 6 digit acak (tercetak di kartu).
         $rows = [
-            ['username', 'nama', 'nisn', 'email', 'kelas', 'password', 'aktif'],
-            ['siswa01', 'Budi Santoso', '0011223344', '', 'VII-A', '', 1],
-            ['siswa02', 'Siti Aminah', '0011223345', '', 'VII-A', '', 1],
+            ['username', 'nama', 'nisn', 'email', 'kelas', 'pin', 'aktif'],
+            ['', 'Budi Santoso', '0011223344', '', 'VII-A', '', 1],
+            ['', 'Siti Aminah', '0011223345', '', 'VII-A', '', 1],
         ];
 
         return $this->writeCsv($rows, 'cbt_siswa_tpl_');
@@ -172,12 +169,17 @@ class BulkImportService
         $seenUsernames = [];
         $seenNisn = [];
         $imported = 0;
-        $defaultPassword = $this->defaultStudentPassword();
 
-        DB::transaction(function () use ($rows, $actor, &$errors, &$seenUsernames, &$seenNisn, &$imported, $defaultPassword) {
+        DB::transaction(function () use ($rows, $actor, &$errors, &$seenUsernames, &$seenNisn, &$imported) {
             foreach ($rows as $index => $row) {
                 $rowNumber = $index + 2;
                 $normalized = $this->normalizeStudentRow($row);
+
+                // Username login = NISN bila kolom username dikosongkan.
+                if ($normalized['username'] === '' && $normalized['nisn'] !== null) {
+                    $normalized['username'] = $normalized['nisn'];
+                }
+
                 $messages = $this->validateStudentRow($normalized, $seenUsernames, $seenNisn);
 
                 if ($messages !== []) {
@@ -203,16 +205,28 @@ class BulkImportService
                     $seenNisn[$normalized['nisn']] = true;
                 }
 
-                User::create([
+                // PIN: pakai yang diisi bila valid, kalau kosong generate acak
+                // 6 digit yang dijamin beda dari username.
+                $pin = $normalized['password'] !== ''
+                    ? $normalized['password']
+                    : $this->pins->generate($normalized['username']);
+
+                if ($pin === $normalized['username']) {
+                    $pin = $this->pins->generate($normalized['username']);
+                }
+
+                $user = new User([
                     'username' => $normalized['username'],
                     'name' => $normalized['name'],
                     'email' => $normalized['email'],
                     'nisn' => $normalized['nisn'],
-                    'password' => $normalized['password'] !== '' ? $normalized['password'] : $defaultPassword,
                     'role' => UserRole::Siswa,
                     'class_id' => $classId,
                     'is_active' => $normalized['is_active'],
                 ]);
+                $this->pins->apply($user, $pin);
+                $user->save();
+
                 $imported++;
             }
 
@@ -240,7 +254,7 @@ class BulkImportService
             'nisn' => $this->nullableTrim($this->coalesce($row, ['nisn', 'nis', 'induk'])),
             'email' => $this->nullableTrim($this->coalesce($row, ['email', 'surel'])),
             'class_name' => $this->nullableTrim($this->coalesce($row, ['kelas', 'class', 'school_class'])),
-            'password' => trim((string) ($this->coalesce($row, ['password', 'sandi', 'pass']) ?? '')),
+            'password' => trim((string) ($this->coalesce($row, ['password', 'sandi', 'pass', 'pin']) ?? '')),
             'is_active' => $this->parseBool($this->coalesce($row, ['aktif', 'is_active', 'status']) ?? true),
         ];
     }
@@ -256,7 +270,7 @@ class BulkImportService
         $messages = [];
 
         if ($row['username'] === '') {
-            $messages[] = 'Kolom "username" wajib diisi.';
+            $messages[] = 'Username & NISN kosong — username login memakai NISN, isi salah satu.';
         } elseif (mb_strlen($row['username']) > 64) {
             $messages[] = 'Username maksimal 64 karakter.';
         } else {
@@ -286,6 +300,16 @@ class BulkImportService
                 $messages[] = 'NISN duplikat di dalam file.';
             } elseif (User::withTrashed()->where('nisn', $row['nisn'])->exists()) {
                 $messages[] = 'NISN sudah terdaftar di akun lain.';
+            }
+        }
+
+        // PIN: boleh kosong (digenerate otomatis); kalau diisi harus angka
+        // 4-8 digit dan berbeda dari username.
+        if ($row['password'] !== '') {
+            if (! preg_match('/^\d{4,8}$/', $row['password'])) {
+                $messages[] = 'PIN harus 4-8 digit angka, atau kosongkan agar digenerate otomatis.';
+            } elseif ($row['password'] === $row['username']) {
+                $messages[] = 'PIN tidak boleh sama dengan username.';
             }
         }
 

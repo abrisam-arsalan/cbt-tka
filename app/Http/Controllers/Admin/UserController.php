@@ -9,6 +9,7 @@ use App\Models\SchoolClass;
 use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\BulkImportService;
+use App\Services\PinService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,6 +21,7 @@ class UserController extends Controller
     public function __construct(
         private readonly AuditLogService $audit,
         private readonly BulkImportService $imports,
+        private readonly PinService $pins,
     ) {}
 
     public function index(Request $request): Response
@@ -112,17 +114,35 @@ class UserController extends Controller
 
     public function store(StoreUserRequest $request): RedirectResponse
     {
-        $user = User::create($this->userData($request));
+        $data = $this->userData($request);
+
+        // PIN kosong => digenerate otomatis agar setiap siswa punya PIN unik
+        // yang tercetak di kartu ujiannya.
+        $pin = filled($data['password'] ?? null)
+            ? $data['password']
+            : $this->pins->generate($data['username']);
+
+        // Username jangan sampai sama dengan password.
+        if ($pin === $data['username']) {
+            $pin = $this->pins->generate($data['username']);
+        }
+
+        unset($data['password']);
+
+        $user = new User($data);
+        $this->pins->apply($user, $pin);
+        $user->save();
 
         $this->audit->log(
             action: 'user.created',
             subject: $user,
-            description: "User {$user->username} dibuat.",
+            description: "Siswa {$user->username} dibuat"
+                .(filled($request->input('password')) ? '.' : ' dengan PIN otomatis.'),
         );
 
         return redirect()
             ->route('admin.users.index')
-            ->with('success', "User {$user->name} berhasil dibuat.");
+            ->with('success', "Siswa {$user->name} berhasil dibuat. PIN login: {$pin} — pastikan tercetak di kartu ujian.");
     }
 
     public function edit(User $user): Response
@@ -143,9 +163,17 @@ class UserController extends Controller
     {
         $data = $this->userData($request);
 
-        if (($data['password'] ?? null) === null) {
+        // Password diisi => ganti PIN (hash + pin_cipher ikut diperbarui);
+        // kosong => PIN lama dipertahankan.
+        if (filled($data['password'] ?? null) && $data['password'] !== $user->username) {
+            $this->pins->apply($user, $data['password']);
+        } elseif (filled($data['password'] ?? null)) {
             unset($data['password']);
+
+            return back()->withErrors(['password' => 'PIN tidak boleh sama dengan username.']);
         }
+
+        unset($data['password']);
 
         $before = $user->only(array_keys($data));
         $user->update($data);
@@ -154,7 +182,7 @@ class UserController extends Controller
 
         return redirect()
             ->route('admin.users.index')
-            ->with('success', "User {$user->name} berhasil diperbarui.");
+            ->with('success', "Siswa {$user->name} berhasil diperbarui.");
     }
 
     public function destroy(Request $request, User $user): RedirectResponse
@@ -190,6 +218,11 @@ class UserController extends Controller
         // Menu Siswa selalu membuat/mengubah peserta didik; role dipaksa siswa.
         $data['role'] = UserRole::Siswa->value;
         $data['is_active'] = $request->boolean('is_active', true);
+
+        // Username login siswa = NISN bila tidak diisi manual.
+        if (($data['username'] ?? '') === '' && ! empty($data['nisn'])) {
+            $data['username'] = $data['nisn'];
+        }
 
         if (array_key_exists('password', $data) && ($data['password'] === null || $data['password'] === '')) {
             $data['password'] = null;
