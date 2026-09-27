@@ -531,7 +531,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="flex min-h-screen flex-col bg-slate-100">
+    <div class="flex min-h-dvh flex-col bg-slate-100">
         <Head :title="title" />
 
         <!-- ===================== Layar Mulai ===================== -->
@@ -584,7 +584,7 @@ onBeforeUnmount(() => {
                                 class="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700"
                                 @click="listOpen = !listOpen"
                             >
-                                Daftar Soal
+                                Daftar<span class="hidden sm:inline"> Soal</span>
                             </button>
                             <button
                                 class="rounded-lg bg-danger-500 px-3 py-1.5 text-sm font-semibold text-white"
@@ -596,7 +596,7 @@ onBeforeUnmount(() => {
 
                         <div
                             v-if="listOpen"
-                            class="absolute right-0 z-40 mt-2 max-h-[65vh] w-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
+                            class="absolute right-0 z-40 mt-2 max-h-[65vh] w-72 max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
                         >
                             <div class="mb-2 flex items-center justify-between">
                                 <h3 class="text-sm font-semibold text-slate-900">Daftar Soal</h3>
@@ -645,7 +645,7 @@ onBeforeUnmount(() => {
                     <!-- Stimulus -->
                     <div
                         v-if="currentQuestion.stimulus"
-                        class="mb-4 whitespace-pre-line rounded-xl bg-white p-4 text-sm text-slate-700 shadow-sm"
+                        class="mb-4 whitespace-pre-line rounded-xl bg-white p-4 text-[15px] leading-relaxed text-slate-700 shadow-sm"
                     >
                         {{ currentQuestion.stimulus }}
                     </div>
@@ -663,11 +663,11 @@ onBeforeUnmount(() => {
                     <p class="mb-1 text-xs text-slate-400">{{ currentQuestion.instruction }}</p>
 
                     <!-- Pertanyaan -->
-                    <div class="mb-4 rounded-xl bg-white p-4 shadow-sm">
+                    <div class="mb-4 rounded-xl bg-white p-4 shadow-sm sm:p-5">
                         <p v-if="currentQuestion.media_url" class="mb-3">
                             <img :src="currentQuestion.media_url" class="max-h-64 rounded-lg" alt="media" />
                         </p>
-                        <h2 class="whitespace-pre-line text-base font-semibold leading-relaxed text-slate-900">
+                        <h2 class="whitespace-pre-line text-[17px] sm:text-lg font-semibold leading-relaxed text-slate-900">
                             {{ currentQuestion.question_text }}
                         </h2>
                     </div>
@@ -679,7 +679,7 @@ onBeforeUnmount(() => {
                             v-if="currentQuestion.type === 'pg'"
                             v-for="option in currentQuestion.options"
                             :key="option.id"
-                            class="flex min-h-12 w-full items-center gap-3 rounded-xl border-2 bg-white px-4 py-3 text-left text-sm transition-colors"
+                            class="flex min-h-14 w-full items-center gap-3 rounded-xl border-2 bg-white px-4 py-3.5 text-left text-[15px] transition-colors"
                             :class="payloadOf(currentQuestion.id)?.option_id === option.id
                                 ? 'border-brand-600 bg-brand-50'
                                 : 'border-slate-200'"
@@ -699,7 +699,7 @@ onBeforeUnmount(() => {
                             v-if="currentQuestion.type === 'pgk'"
                             v-for="option in currentQuestion.options"
                             :key="option.id"
-                            class="flex min-h-12 w-full items-center gap-3 rounded-xl border-2 bg-white px-4 py-3 text-left text-sm transition-colors"
+                            class="flex min-h-14 w-full items-center gap-3 rounded-xl border-2 bg-white px-4 py-3.5 text-left text-[15px] transition-colors"
                             :class="(payloadOf(currentQuestion.id)?.option_ids ?? []).includes(option.id)
                                 ? 'border-brand-600 bg-brand-50'
                                 : 'border-slate-200'"
@@ -760,11 +760,12 @@ onBeforeUnmount(() => {
             <nav class="safe-bottom sticky bottom-0 z-30 border-t border-slate-200 bg-white">
                 <div class="flex items-center gap-2 px-4 py-3">
                     <button
-                        class="h-12 flex-1 rounded-xl bg-slate-100 font-semibold text-slate-700 disabled:opacity-40"
+                        class="h-12 flex-1 rounded-xl bg-slate-100 font-semibold text-slate-700 disabled:opacity-40 sm:flex-none sm:px-6"
                         :disabled="currentIndex === 0"
                         @click="goTo(currentIndex - 1)"
+                        :aria-label="currentIndex === 0 ? 'Soal pertama' : 'Soal sebelumnya'"
                     >
-                        ← Sebelumnya
+                        ←<span class="hidden sm:inline">&nbsp;Sebelumnya</span>
                     </button>
 
                     <label
@@ -780,19 +781,20 @@ onBeforeUnmount(() => {
                             :checked="isFlagged(currentQuestion.id)"
                             @change="toggleFlag(currentQuestion.id)"
                         />
-                        🚩 Ragu-ragu
+                        🚩<span class="hidden sm:inline">&nbsp;Ragu-ragu</span>
                     </label>
 
                     <button
                         v-if="currentIndex < totalQuestions - 1"
-                        class="h-12 flex-1 rounded-xl bg-brand-600 font-semibold text-white"
+                        class="h-12 flex-1 rounded-xl bg-brand-600 font-semibold text-white sm:flex-none sm:px-6"
                         @click="goTo(currentIndex + 1)"
+                        aria-label="Soal berikutnya"
                     >
-                        Berikutnya →
+                        <span class="hidden sm:inline">Berikutnya&nbsp;</span>→
                     </button>
                     <button
                         v-else
-                        class="h-12 flex-1 rounded-xl bg-success-600 font-semibold text-white"
+                        class="h-12 flex-1 rounded-xl bg-success-600 font-semibold text-white sm:flex-none sm:px-6"
                         @click="requestSubmit"
                     >
                         Selesai ✓

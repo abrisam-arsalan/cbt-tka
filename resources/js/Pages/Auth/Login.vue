@@ -26,7 +26,7 @@ const submit = () => {
 <template>
     <Head :title="title" />
 
-    <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-brand-50 via-orange-50 to-amber-100 px-4 py-10">
+    <div class="relative flex min-h-dvh items-center justify-center overflow-x-hidden bg-gradient-to-br from-brand-50 via-orange-50 to-amber-100 px-4 py-8 sm:py-10">
         <!-- Dekorasi latar -->
         <div class="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-brand-300/30 blur-3xl"></div>
         <div class="pointer-events-none absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-amber-300/30 blur-3xl"></div>

@@ -101,7 +101,7 @@ const primaryAction = (exam) => {
             >
                 <div class="p-4">
                     <div class="mb-2 flex items-start justify-between gap-2">
-                        <h3 class="font-semibold text-slate-900">{{ exam.title }}</h3>
+                        <h3 class="min-w-0 break-words font-semibold text-slate-900">{{ exam.title }}</h3>
                         <span
                             class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium"
                             :class="statusClass(exam)"

@@ -18,21 +18,21 @@ const logout = () => {
 </script>
 
 <template>
-    <div class="flex min-h-screen flex-col bg-slate-50">
+    <div class="flex min-h-dvh flex-col bg-slate-50">
         <!-- Header -->
         <header class="safe-top sticky top-0 z-30 bg-gradient-to-r from-brand-500 to-orange-600 text-white shadow-md shadow-brand-500/20">
-            <div class="flex items-center justify-between px-4 py-3.5">
-                <div class="flex items-center gap-2.5">
+            <div class="flex items-center justify-between gap-2 px-4 py-3.5">
+                <div class="flex shrink-0 items-center gap-2.5">
                     <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-white p-0.5 shadow-sm">
                         <img src="/images/logo.png" alt="Logo" class="h-full w-full object-contain" />
                     </span>
                     <h1 class="text-base font-bold tracking-tight">Panglima CBT</h1>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-xs font-bold">
+                <div class="flex min-w-0 items-center justify-end gap-2">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-xs font-bold">
                         {{ (user?.name || '?').trim().slice(0, 1).toUpperCase() }}
                     </span>
-                    <span class="text-sm font-medium">{{ user?.name }}</span>
+                    <span class="truncate text-sm font-medium">{{ user?.name }}</span>
                 </div>
             </div>
         </header>
