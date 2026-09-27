@@ -21,11 +21,11 @@ class StudentSeeder extends Seeder
         $pins = app(PinService::class);
 
         $students = [
-            ['nisn' => '0010001001', 'name' => 'Andi Pratama', 'class' => 'Kelas 7'],
-            ['nisn' => '0010001002', 'name' => 'Budi Santoso', 'class' => 'Kelas 7'],
-            ['nisn' => '0010001003', 'name' => 'Citra Dewi', 'class' => 'Kelas 7'],
-            ['nisn' => '0010001004', 'name' => 'Dian Permata', 'class' => 'Kelas 7'],
-            ['nisn' => '0010001005', 'name' => 'Eko Prasetyo', 'class' => 'Kelas 7'],
+            ['nisn' => '0010001001', 'name' => 'Andi Pratama', 'class' => '7A'],
+            ['nisn' => '0010001002', 'name' => 'Budi Santoso', 'class' => '7A'],
+            ['nisn' => '0010001003', 'name' => 'Citra Dewi', 'class' => '7A'],
+            ['nisn' => '0010001004', 'name' => 'Dian Permata', 'class' => '7A'],
+            ['nisn' => '0010001005', 'name' => 'Eko Prasetyo', 'class' => '7A'],
         ];
 
         foreach ($students as $data) {

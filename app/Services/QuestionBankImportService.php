@@ -50,10 +50,10 @@ class QuestionBankImportService
     {
         $rows = [
             self::COLUMNS,
-            ['pg', 'VII-A', '', 'Ibu kota Indonesia adalah...', '', 'Jakarta', 'Surabaya', 'Bandung', 'Medan', '', 'A', '', '', '', '', '', '', '', '', '', '', 1],
-            ['pgk', 'VII-A', '', 'Manakah bilangan prima?', '', '2', '3', '4', '5', '9', 'A,B,D', '', '', '', '', '', '', '', '', '', '', 1],
-            ['boolean', 'VII-A', '', 'Matahari terbit di timur.', '', '', '', '', '', '', 'Benar', '', '', '', '', '', '', '', '', '', '', 1],
-            ['matching', 'VII-A', '', 'Pasangkan negara dengan ibu kotanya.', '', '', '', '', '', '', '', 'Indonesia', 'Jakarta', 'Jepang', 'Tokyo', 'Prancis', 'Paris', 'Italia', 'Roma', '', '', 1],
+            ['pg', '7A', '', 'Ibu kota Indonesia adalah...', '', 'Jakarta', 'Surabaya', 'Bandung', 'Medan', '', 'A', '', '', '', '', '', '', '', '', '', '', 1],
+            ['pgk', '7A', '', 'Manakah bilangan prima?', '', '2', '3', '4', '5', '9', 'A,B,D', '', '', '', '', '', '', '', '', '', '', 1],
+            ['boolean', '7A', '', 'Matahari terbit di timur.', '', '', '', '', '', '', 'Benar', '', '', '', '', '', '', '', '', '', '', 1],
+            ['matching', '7A', '', 'Pasangkan negara dengan ibu kotanya.', '', '', '', '', '', '', '', 'Indonesia', 'Jakarta', 'Jepang', 'Tokyo', 'Prancis', 'Paris', 'Italia', 'Roma', '', '', 1],
         ];
 
         return $this->writeCsv($rows, 'cbt_bank_tpl_');

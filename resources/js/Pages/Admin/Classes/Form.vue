@@ -34,15 +34,21 @@ const submit = () => {
 
             <form @submit.prevent="submit" class="space-y-4 rounded-2xl bg-white p-6 shadow-sm">
                 <div>
-                    <label class="mb-1 block text-sm font-semibold text-slate-700">Nama Kelas</label>
-                    <input v-model="form.name" type="text" required placeholder="Contoh: X IPA 1" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" />
+                    <label class="mb-1 block text-sm font-semibold text-slate-700">Nama Rombel</label>
+                    <input v-model="form.name" type="text" required placeholder="Contoh: 7A, 8B, 9C" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" />
+                    <p class="mt-1 text-xs text-slate-400">Rombel = rombongan belajar per kelas, mis. 7A untuk jenjang 7.</p>
                     <p v-if="form.errors.name" class="mt-1 text-xs text-danger-600">{{ form.errors.name }}</p>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="mb-1 block text-sm font-semibold text-slate-700">Tingkat</label>
-                        <input v-model="form.grade" type="text" placeholder="10 / 11 / 12" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" />
+                        <label class="mb-1 block text-sm font-semibold text-slate-700">Jenjang</label>
+                        <select v-model="form.grade" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm">
+                            <option value="">— pilih jenjang —</option>
+                            <option value="7">7 (Satu SMP)</option>
+                            <option value="8">8 (Dua SMP)</option>
+                            <option value="9">9 (Tiga SMP)</option>
+                        </select>
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-semibold text-slate-700">Tahun Ajaran</label>

@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 
 const props = defineProps({
@@ -24,6 +24,7 @@ const form = useForm({
     title: props.exam?.title ?? '',
     description: props.exam?.description ?? '',
     class_id: props.exam?.class_id ?? '',
+    grade: props.exam?.grade ?? '',
     batch_ids: [],
     duration_minutes: props.exam?.duration_minutes ?? 60,
     offline_grace_minutes: props.exam?.offline_grace_minutes ?? 10,
@@ -43,7 +44,18 @@ const visibleBatches = computed(() => {
     return props.batches.filter((b) => !b.class_name || (cls && b.class_name === cls.label));
 });
 
+// Target ujian: 'all' (semua siswa) | 'jenjang' (7/8/9) | 'rombel' (kelas tertentu).
+const targetType = ref(
+    props.exam?.class_id ? 'rombel' : (props.exam?.grade ? 'jenjang' : 'all'),
+);
+
+const jenjangOptions = ['7', '8', '9'];
+
 const submit = () => {
+    // Kosongkan field target yang tidak dipakai agar tidak saling bertabrakan.
+    form.class_id = targetType.value === 'rombel' ? form.class_id : '';
+    form.grade = targetType.value === 'jenjang' ? form.grade : '';
+
     if (props.edit) {
         form.transform(({ batch_ids, ...rest }) => rest).put(route('admin.exams.update', props.exam.id));
     } else {
@@ -101,15 +113,45 @@ const submit = () => {
                     </div>
                 </div>
 
-                <!-- Kelas -->
+                <!-- Target ujian -->
                 <div>
-                    <label class="mb-1 block text-sm font-semibold text-slate-700">Kelas</label>
-                    <select v-model="form.class_id" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm">
-                        <option value="">— Semua kelas —</option>
-                        <option v-for="c in classes" :key="c.value" :value="c.value">{{ c.label }}</option>
-                    </select>
-                    <p class="mt-1 text-xs text-slate-400">Ujian hanya bisa diakses oleh siswa pada kelas ini.</p>
+                    <label class="mb-1 block text-sm font-semibold text-slate-700">Target Peserta</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label
+                            v-for="opt in [
+                                { value: 'all', label: 'Semua Siswa' },
+                                { value: 'jenjang', label: 'Per Jenjang' },
+                                { value: 'rombel', label: 'Per Rombel' },
+                            ]"
+                            :key="opt.value"
+                            class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-semibold"
+                            :class="targetType === opt.value ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'"
+                        >
+                            <input v-model="targetType" type="radio" name="target_type" :value="opt.value" class="hidden" />
+                            {{ opt.label }}
+                        </label>
+                    </div>
+
+                    <div v-if="targetType === 'jenjang'" class="mt-3">
+                        <label class="mb-1 block text-xs font-semibold text-slate-500">Jenjang</label>
+                        <select v-model="form.grade" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm">
+                            <option value="">— pilih jenjang —</option>
+                            <option v-for="g in jenjangOptions" :key="g" :value="g">Kelas {{ g }} (semua rombel)</option>
+                        </select>
+                        <p class="mt-1 text-xs text-slate-400">Ujian bisa diakses seluruh siswa kelas {{ form.grade || '?' }}, semua rombel.</p>
+                    </div>
+
+                    <div v-if="targetType === 'rombel'" class="mt-3">
+                        <label class="mb-1 block text-xs font-semibold text-slate-500">Rombel</label>
+                        <select v-model="form.class_id" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm">
+                            <option value="">— pilih rombel —</option>
+                            <option v-for="c in classes" :key="c.value" :value="c.value">{{ c.label }}</option>
+                        </select>
+                        <p class="mt-1 text-xs text-slate-400">Ujian hanya bisa diakses siswa pada rombel ini.</p>
+                    </div>
+
                     <p v-if="form.errors.class_id" class="mt-1 text-xs text-danger-600">{{ form.errors.class_id }}</p>
+                    <p v-if="form.errors.grade" class="mt-1 text-xs text-danger-600">{{ form.errors.grade }}</p>
                 </div>
 
                 <!-- Pilih Bank Soal (hanya saat membuat) -->

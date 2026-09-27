@@ -36,7 +36,12 @@ const actionLabel = {
         <div class="mb-4 flex items-start justify-between">
             <div>
                 <h2 class="text-xl font-bold text-slate-900">{{ exam.title }}</h2>
-                <p class="text-sm text-slate-500">{{ exam.status_label }}</p>
+                <p class="text-sm text-slate-500">
+                    {{ exam.status_label }}
+                    <span v-if="exam.target_label" class="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        👥 {{ exam.target_label }}
+                    </span>
+                </p>
             </div>
             <Link :href="route('admin.exams.edit', exam.id)" class="rounded-xl bg-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
                 Edit

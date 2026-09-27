@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Exam;
 use App\Models\ExamParticipant;
 use App\Models\QuestionBatch;
+use App\Models\SchoolClass;
 use App\Models\User;
 use App\Services\QuestionCopyService;
 use App\Services\TokenGenerator;
@@ -21,10 +22,14 @@ class ExamSeeder extends Seeder
         $copy = app(QuestionCopyService::class);
         $generator = TokenGenerator::fromConfig();
 
+        // Resolusi rombel by-name agar tidak bergantung urutan insert.
+        $id7a = SchoolClass::query()->where('name', '7A')->value('id');
+        $id8a = SchoolClass::query()->where('name', '8A')->value('id');
+
         $this->makeExam($copy, $generator, [
             'title' => 'Ujian Matematika - Semester Ganjil 2026',
             'description' => 'Ujian akhir semester ganjil Matematika Wajib. Kerjakan dengan teliti.',
-            'class_id' => 1,
+            'class_id' => $id7a,
             'bank' => 'Matematika',
             'duration_minutes' => 60,
             'anti_cheat' => true,
@@ -32,8 +37,8 @@ class ExamSeeder extends Seeder
 
         $this->makeExam($copy, $generator, [
             'title' => 'Penilaian Harian IPA Terpadu',
-            'description' => 'Soal IPA Terpadu kelas XI. Perhatikan petunjuk setiap nomor.',
-            'class_id' => 2,
+            'description' => 'Soal IPA Terpadu. Perhatikan petunjuk setiap nomor.',
+            'class_id' => $id8a,
             'bank' => 'IPA Terpadu',
             'duration_minutes' => 45,
             'anti_cheat' => false,

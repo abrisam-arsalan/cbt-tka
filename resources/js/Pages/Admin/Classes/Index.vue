@@ -1,12 +1,29 @@
 <script setup>
 import { Head, Link, router } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import ImportPanel from '@/Admin/Shared/ImportPanel.vue';
 
-defineProps({
+const props = defineProps({
     title: String,
     classes: { type: Array, default: () => [] },
     importErrors: { type: Array, default: () => [] },
+});
+
+// Kelompokkan rombel per jenjang (7/8/9) untuk tampilan daftar.
+const jenjangLabels = { 7: 'Jenjang Kelas 7 (Satu SMP)', 8: 'Jenjang Kelas 8 (Dua SMP)', 9: 'Jenjang Kelas 9 (Tiga SMP)' };
+
+const grouped = computed(() => {
+    const map = {};
+    for (const cls of props.classes) {
+        const key = cls.grade != null && cls.grade !== '' ? String(cls.grade) : '—';
+        (map[key] ??= []).push(cls);
+    }
+    return Object.entries(map).sort(([a], [b]) => {
+        if (a === '—') return 1;
+        if (b === '—') return -1;
+        return Number(a) - Number(b);
+    });
 });
 
 const btnPrimary = 'bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-sm transition duration-150 flex items-center justify-center text-center w-full sm:w-auto';
@@ -51,7 +68,13 @@ const destroy = (classItem) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="classItem in classes" :key="classItem.id" class="border-b border-gray-100 last:border-0">
+                    <template v-for="[jenjang, rombels] in grouped" :key="jenjang">
+                        <tr class="border-y border-brand-100 bg-brand-50/60">
+                            <td colspan="6" class="px-4 py-2 text-xs font-bold uppercase tracking-wide text-brand-700">
+                                {{ jenjangLabels[jenjang] ?? `Jenjang ${jenjang}` }} — {{ rombels.length }} rombel
+                            </td>
+                        </tr>
+                        <tr v-for="classItem in rombels" :key="classItem.id" class="border-b border-gray-100 last:border-0">
                         <td class="px-4 py-3 font-medium text-gray-800">{{ classItem.name }}</td>
                         <td class="px-4 py-3">{{ classItem.grade ?? '-' }}</td>
                         <td class="px-4 py-3">{{ classItem.academic_year ?? '-' }}</td>
@@ -70,7 +93,8 @@ const destroy = (classItem) => {
                                 <button :class="btnDangerSm" @click="destroy(classItem)">Hapus</button>
                             </div>
                         </td>
-                    </tr>
+                        </tr>
+                    </template>
                     <tr v-if="classes.length === 0">
                         <td colspan="6" class="px-4 py-8 text-center text-gray-500">Belum ada kelas.</td>
                     </tr>

@@ -24,7 +24,7 @@ class ExamController extends Controller
 
     public function index(Request $request): Response
     {
-        $exams = Exam::with(['creator', 'participants'])
+        $exams = Exam::with(['creator', 'participants', 'schoolClass'])
             ->withCount(['questions', 'attempts'])
             ->orderByDesc('start_at')
             ->orderByDesc('id')
@@ -33,6 +33,7 @@ class ExamController extends Controller
                 'id' => $exam->id,
                 'title' => $exam->title,
                 'description' => $exam->description,
+                'target_label' => $exam->targetLabel(),
                 'duration_minutes' => (int) $exam->duration_minutes,
                 'start_at' => $exam->start_at?->toIso8601String(),
                 'end_at' => $exam->end_at?->toIso8601String(),
@@ -96,6 +97,7 @@ class ExamController extends Controller
                 'title' => $exam->title,
                 'description' => $exam->description,
                 'class_name' => $exam->schoolClass?->name,
+                'target_label' => $exam->targetLabel(),
                 'duration_minutes' => (int) $exam->duration_minutes,
                 'start_at' => $exam->start_at?->toIso8601String(),
                 'end_at' => $exam->end_at?->toIso8601String(),
@@ -123,7 +125,7 @@ class ExamController extends Controller
             'title' => 'Edit: '.$exam->title,
             'edit' => true,
             'exam' => $exam->only([
-                'id', 'title', 'description', 'class_id', 'duration_minutes',
+                'id', 'title', 'description', 'class_id', 'grade', 'duration_minutes',
                 'start_at', 'end_at', 'anti_cheat_enabled', 'anti_cheat_max_warnings',
                 'anti_cheat_action', 'shuffle_questions', 'shuffle_options', 'offline_grace_minutes',
             ]),

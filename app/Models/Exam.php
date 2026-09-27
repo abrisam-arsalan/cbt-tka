@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 #[Fillable([
-    'title', 'description', 'class_id', 'duration_minutes', 'start_at', 'end_at', 'status', 'paused_at',
+    'title', 'description', 'class_id', 'grade', 'duration_minutes', 'start_at', 'end_at', 'status', 'paused_at',
     'anti_cheat_enabled', 'anti_cheat_max_warnings', 'anti_cheat_action',
     'shuffle_questions', 'shuffle_options', 'offline_grace_minutes', 'created_by',
 ])]
@@ -65,16 +65,40 @@ class Exam extends Model
     }
 
     /**
-     * Apakah siswa ini boleh mengakses ujian (berdasarkan pembatasan kelas).
-     * class_id null = tidak dibatasi.
+     * Apakah siswa ini boleh mengakses ujian (berdasarkan target).
+     *
+     * class_id terisi  -> khusus rombel itu;
+     * grade terisi     -> seluruh jenjang (semua rombel di tingkat tsb.);
+     * keduanya null    -> semua siswa.
      */
     public function accessibleToUser(?User $user): bool
     {
-        if ($this->class_id === null) {
-            return true;
+        if ($this->class_id !== null) {
+            return $user !== null && (int) $user->class_id === (int) $this->class_id;
         }
 
-        return $user !== null && (int) $user->class_id === (int) $this->class_id;
+        if ($this->grade !== null && $this->grade !== '') {
+            return $user?->schoolClass?->grade !== null
+                && (string) $user->schoolClass->grade === (string) $this->grade;
+        }
+
+        return true;
+    }
+
+    /**
+     * Label target ujian untuk tampilan admin ("Semua siswa" / "Jenjang 7" / "7A").
+     */
+    public function targetLabel(): string
+    {
+        if ($this->class_id !== null) {
+            return $this->schoolClass?->name ?? 'Rombel (terhapus)';
+        }
+
+        if ($this->grade !== null && $this->grade !== '') {
+            return "Jenjang {$this->grade} (semua rombel)";
+        }
+
+        return 'Semua siswa';
     }
 
     public function scopeStatus(Builder $query, ExamStatus|string $status): Builder

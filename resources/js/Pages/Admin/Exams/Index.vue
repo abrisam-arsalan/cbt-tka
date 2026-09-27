@@ -46,6 +46,7 @@ const destroy = (exam) => {
                     <tr>
                         <th class="px-4 py-3">Judul</th>
                         <th class="px-4 py-3">Status</th>
+                        <th class="px-4 py-3">Target</th>
                         <th class="px-4 py-3">Jadwal</th>
                         <th class="px-4 py-3">Soal</th>
                         <th class="px-4 py-3">Peserta</th>
@@ -62,6 +63,11 @@ const destroy = (exam) => {
                         <td class="px-4 py-3">
                             <span class="rounded-full px-2 py-0.5 text-xs" :class="statusClass(exam.status)">
                                 {{ exam.status_label }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                {{ exam.target_label }}
                             </span>
                         </td>
                         <td class="px-4 py-3 text-xs text-gray-500">{{ formatDate(exam.start_at) }}</td>

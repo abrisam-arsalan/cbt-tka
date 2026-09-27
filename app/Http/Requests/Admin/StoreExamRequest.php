@@ -24,7 +24,9 @@ class StoreExamRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'class_id' => [$isUpdate ? 'sometimes' : 'nullable', 'integer', 'exists:classes,id'],
+            // Target ujian: class_id (rombel) ATAU grade (jenjang 7/8/9), tidak keduanya.
+            'class_id' => [$isUpdate ? 'sometimes' : 'nullable', 'integer', 'exists:classes,id', 'exclude_with:grade'],
+            'grade' => [$isUpdate ? 'sometimes' : 'nullable', 'string', Rule::in(['7', '8', '9']), 'exclude_with:class_id'],
             // Hanya dipakai saat membuat ujian: bank soal yang isinya disalin.
             'batch_ids' => ['sometimes', 'nullable', 'array'],
             'batch_ids.*' => ['integer', 'exists:question_batches,id'],

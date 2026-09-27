@@ -18,18 +18,18 @@ class QuestionSeeder extends Seeder
         $admin = User::where('username', 'admin')->first();
         $service = app(QuestionBankImportService::class);
 
-        $this->importBatch($service, $admin, 'Matematika', 1, [
-            ['pg', 'Kelas 7', '', 'Berapakah hasil dari 2 + 2 × 3?', '', '4', '8', '12', '6', '10', 'B', '', '', '', '', '', '', '', '', '', '', 1],
-            ['pgk', 'Kelas 7', '', 'Manakah bilangan prima? (pilih semua)', '', '2', '3', '4', '5', '9', 'A,B,D', '', '', '', '', '', '', '', '', '', '', 1],
-            ['boolean', 'Kelas 7', '', 'Setiap bilangan prima adalah ganjil.', '', '', '', '', '', '', 'Salah', '', '', '', '', '', '', '', '', '', '', 1],
-            ['matching', 'Kelas 7', '', 'Pasangkan ibu kota dengan negaranya.', '', '', '', '', '', '', '', 'Indonesia', 'Jakarta', 'Jepang', 'Tokyo', 'Prancis', 'Paris', 'Italia', 'Roma', '', '', 1],
-            ['pg', 'Kelas 7', '', 'Berapakah akar dari 144?', '', '10', '11', '12', '13', '14', 'C', '', '', '', '', '', '', '', '', '', '', 1],
+        $this->importBatch($service, $admin, 'Matematika', AppModelsSchoolClass::query()->where('name', '7A')->value('id'), [
+            ['pg', '7A', '', 'Berapakah hasil dari 2 + 2 × 3?', '', '4', '8', '12', '6', '10', 'B', '', '', '', '', '', '', '', '', '', '', 1],
+            ['pgk', '7A', '', 'Manakah bilangan prima? (pilih semua)', '', '2', '3', '4', '5', '9', 'A,B,D', '', '', '', '', '', '', '', '', '', '', 1],
+            ['boolean', '7A', '', 'Setiap bilangan prima adalah ganjil.', '', '', '', '', '', '', 'Salah', '', '', '', '', '', '', '', '', '', '', 1],
+            ['matching', '7A', '', 'Pasangkan ibu kota dengan negaranya.', '', '', '', '', '', '', '', 'Indonesia', 'Jakarta', 'Jepang', 'Tokyo', 'Prancis', 'Paris', 'Italia', 'Roma', '', '', 1],
+            ['pg', '7A', '', 'Berapakah akar dari 144?', '', '10', '11', '12', '13', '14', 'C', '', '', '', '', '', '', '', '', '', '', 1],
         ]);
 
-        $this->importBatch($service, $admin, 'IPA Terpadu', 2, [
-            ['pg', 'Kelas 8', '', 'Planet terdekat dari Matahari adalah...', '', 'Venus', 'Merkurius', 'Mars', 'Bumi', 'Jupiter', 'B', '', '', '', '', '', '', '', '', '', '', 1],
-            ['boolean', 'Kelas 8', '', 'Air mendidih pada 100°C di tekanan normal.', '', '', '', '', '', '', 'Benar', '', '', '', '', '', '', '', '', '', '', 1],
-            ['matching', 'Kelas 8', '', 'Pasangkan gas dengan rumusnya.', '', '', '', '', '', '', '', 'Oksigen', 'O₂', 'Nitrogen', 'N₂', 'Karbon dioksida', 'CO₂', '', '', '', '', 1],
+        $this->importBatch($service, $admin, 'IPA Terpadu', AppModelsSchoolClass::query()->where('name', '8A')->value('id'), [
+            ['pg', '8A', '', 'Planet terdekat dari Matahari adalah...', '', 'Venus', 'Merkurius', 'Mars', 'Bumi', 'Jupiter', 'B', '', '', '', '', '', '', '', '', '', '', 1],
+            ['boolean', '8A', '', 'Air mendidih pada 100°C di tekanan normal.', '', '', '', '', '', '', 'Benar', '', '', '', '', '', '', '', '', '', '', 1],
+            ['matching', '8A', '', 'Pasangkan gas dengan rumusnya.', '', '', '', '', '', '', '', 'Oksigen', 'O₂', 'Nitrogen', 'N₂', 'Karbon dioksida', 'CO₂', '', '', '', '', 1],
         ]);
 
         // Bank campuran tanpa kelas (bisa dipakai ujian kelas mana pun).

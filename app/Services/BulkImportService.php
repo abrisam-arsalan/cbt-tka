@@ -33,9 +33,9 @@ class BulkImportService
     {
         $rows = [
             ['nama', 'tingkat', 'tahun_ajaran', 'deskripsi', 'aktif'],
-            ['VII-A', 'VII', '2026/2027', 'Kelas tujuh A', 1],
-            ['VII-B', 'VII', '2026/2027', 'Kelas tujuh B', 1],
-            ['VIII-A', 'VIII', '2026/2027', 'Kelas delapan A', 1],
+            ['7A', '7', '2026/2027', 'Rombel 7A', 1],
+            ['7B', '7', '2026/2027', 'Rombel 7B', 1],
+            ['8A', '8', '2026/2027', 'Rombel 8A', 1],
         ];
 
         return $this->writeCsv($rows, 'cbt_kelas_tpl_');
@@ -153,8 +153,8 @@ class BulkImportService
         // pin dikosongkan => sistem generate PIN 6 digit acak (tercetak di kartu).
         $rows = [
             ['username', 'nama', 'nisn', 'email', 'kelas', 'pin', 'aktif'],
-            ['', 'Budi Santoso', '0011223344', '', 'VII-A', '', 1],
-            ['', 'Siti Aminah', '0011223345', '', 'VII-A', '', 1],
+            ['', 'Budi Santoso', '0011223344', '', '7A', '', 1],
+            ['', 'Siti Aminah', '0011223345', '', '7A', '', 1],
         ];
 
         return $this->writeCsv($rows, 'cbt_siswa_tpl_');

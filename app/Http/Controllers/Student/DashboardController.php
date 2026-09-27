@@ -20,9 +20,21 @@ class DashboardController extends Controller
             ->where('is_active', true)
             ->pluck('exam_id');
 
+        $userGrade = $user->schoolClass?->grade;
+
         $exams = Exam::query()
             ->whereIn('id', $examIds)
-            ->where(fn ($q) => $q->whereNull('class_id')->orWhere('class_id', $user->class_id))
+            ->where(function ($q) use ($user, $userGrade) {
+                // Semua siswa: class_id & grade kosong.
+                $q->where(fn ($a) => $a->whereNull('class_id')->whereNull('grade'))
+                    // Rombel tertentu.
+                    ->orWhere('class_id', $user->class_id);
+
+                // Jenjang: siswa hanya melihat ujian jenjang kelasnya sendiri.
+                if ($userGrade !== null && $userGrade !== '') {
+                    $q->orWhere(fn ($g) => $g->whereNull('class_id')->where('grade', (string) $userGrade));
+                }
+            })
             ->withCount(['questions' => fn ($q) => $q->where('is_active', true)])
             ->orderByDesc('start_at')
             ->orderByDesc('id')
