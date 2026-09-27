@@ -378,7 +378,13 @@ class ExamController extends Controller
 
         // Algoritma Fisher-Yates dengan seeded rand. Cukup untuk tujuan
         // pengacakan soal; bukan sumber acak kriptografis.
-        $state = $seed;
+        //
+        // State dikunci ke 31 bit: hasil kali berikutnya maks 2^31 * 1.1e9
+        // ~= 2.4e18, selalu integer 64-bit. Tanpa clamp, seed besar membuat
+        // perkalian meluap ke float dan cast int-nya memicu deprecation
+        // PHP 8.5 ("float not representable as an int") -> ErrorException
+        // -> 500 saat siswa membuka ujian dengan shuffle aktif.
+        $state = $seed & 0x7fffffff;
 
         for ($i = count($items) - 1; $i > 0; $i--) {
             $state = ($state * 1103515245 + 12345) & 0x7fffffff;
