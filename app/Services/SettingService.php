@@ -8,11 +8,14 @@ use Illuminate\Support\Facades\Cache;
 /**
  * Pembungkus tabel settings.
  *
- * Menggunakan cache database (CACHE_STORE=database) agar baca berulang
- * dalam satu request tidak menimbulkan banyak query kecil di HDD.
- * Cache dipertahankan selama 5 menit — cukup singkat supaya perubahan
- * admin terasa cepat, cukup panjang supaya halaman monitoring 200 siswa
- * tidak melakukan 200× baca settings.
+ * Menggunakan cache (CACHE_STORE=database/file) agar baca berulang dalam
+ * satu request tidak menimbulkan banyak query kecil. Yang di-cache adalah
+ * ARRAY DATA POLOS (key => value/group/is_public), BUKAN objek Eloquent —
+ * Laravel 12+ menolak unserialize objek model dari cache file/database
+ * (hasilnya __PHP_Incomplete_Class dan halaman jadi 500).
+ *
+ * Cache dipertahankan 5 menit — cukup singkat supaya perubahan admin
+ * terasa cepat, cukup panjang untuk halaman monitoring 200 siswa.
  */
 class SettingService
 {
@@ -24,13 +27,13 @@ class SettingService
      */
     public function get(string $key, mixed $default = null, array $defaults = []): mixed
     {
-        $setting = $this->all()[$key] ?? null;
+        $rows = $this->all();
 
-        if ($setting === null) {
+        if (! array_key_exists($key, $rows)) {
             return $defaults[$key] ?? $default;
         }
 
-        return $setting->typedValue();
+        return $rows[$key]['value'];
     }
 
     public function set(string $key, mixed $value, string $type = 'string', array $extra = []): Setting
@@ -56,12 +59,24 @@ class SettingService
     }
 
     /**
-     * @return array<string, Setting> keyed by key
+     * Semua setting ter-cache sebagai data polos, di-key oleh `key`.
+     *
+     * @return array<string, array{value: mixed, group: string, is_public: bool}>
      */
     public function all(): array
     {
         return Cache::remember(self::CACHE_KEY, self::CACHE_TTL_SECONDS, function () {
-            return Setting::query()->get()->keyBy('key')->all();
+            $rows = [];
+
+            foreach (Setting::query()->get() as $setting) {
+                $rows[$setting->key] = [
+                    'value' => $setting->typedValue(),
+                    'group' => (string) $setting->group,
+                    'is_public' => (bool) $setting->is_public,
+                ];
+            }
+
+            return $rows;
         });
     }
 
@@ -72,9 +87,9 @@ class SettingService
     {
         $out = [];
 
-        foreach ($this->all() as $key => $setting) {
-            if ($setting->group === $group) {
-                $out[$key] = $setting->typedValue();
+        foreach ($this->all() as $key => $row) {
+            if ($row['group'] === $group) {
+                $out[$key] = $row['value'];
             }
         }
 
@@ -90,9 +105,9 @@ class SettingService
     {
         $out = [];
 
-        foreach ($this->all() as $key => $setting) {
-            if ((bool) $setting->is_public) {
-                $out[$key] = $setting->typedValue();
+        foreach ($this->all() as $key => $row) {
+            if ($row['is_public']) {
+                $out[$key] = $row['value'];
             }
         }
 

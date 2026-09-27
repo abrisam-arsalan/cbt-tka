@@ -29,7 +29,7 @@ defineProps({
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <div
                 v-for="card in cards"
-                :key="card.student_name + card.token"
+                :key="card.username + card.student_name"
                 class="kartu-container overflow-hidden break-inside-avoid rounded-lg border bg-white p-4 shadow-sm"
             >
                 <div class="mb-2 flex items-center justify-between">
@@ -40,9 +40,6 @@ defineProps({
                     <img v-if="card.logo_url" :src="card.logo_url" class="h-10 w-10 object-contain" alt="logo" />
                 </div>
 
-                <!-- QR code: ukuran tetap, tidak boleh overflow -->
-                <div v-if="card.qr_svg" class="qr-box mx-auto mb-3 h-20 w-20 flex-shrink-0" v-html="card.qr_svg"></div>
-
                 <div class="space-y-1 text-center">
                     <p class="font-semibold text-gray-900">{{ card.student_name }}</p>
                     <p class="text-xs text-gray-500">{{ card.class_name }}</p>
@@ -50,25 +47,26 @@ defineProps({
                     <p class="text-xs text-gray-400">{{ card.duration_minutes }} menit · {{ card.start_at }}</p>
                 </div>
 
-                <div class="mt-2 rounded-lg bg-gray-100 px-3 py-2 text-center">
-                    <p class="text-xs text-gray-400">Token Ujian</p>
-                    <p class="text-base font-bold tracking-widest text-gray-900">{{ card.token || '—' }}</p>
+                <div class="mt-2 grid grid-cols-2 gap-2">
+                    <div class="rounded-lg border border-gray-300 px-2 py-1.5 text-center">
+                        <p class="text-[10px] text-gray-400">Username (NISN)</p>
+                        <p class="font-mono text-sm font-bold text-gray-900">{{ card.username || '—' }}</p>
+                    </div>
+                    <div class="rounded-lg border border-gray-300 px-2 py-1.5 text-center">
+                        <p class="text-[10px] text-gray-400">PIN Login</p>
+                        <p class="font-mono text-sm font-bold text-gray-900">{{ card.login_pin || 'reset PIN' }}</p>
+                    </div>
                 </div>
             </div>
 
             <div v-if="cards.length === 0" class="col-span-full rounded-xl bg-white p-8 text-center text-gray-500 shadow-sm">
-                Belum ada kartu. Tambahkan peserta dan generate token terlebih dahulu.
+                Belum ada kartu. Tambahkan peserta terlebih dahulu (menu Peserta).
             </div>
         </div>
     </AdminLayout>
 </template>
 
 <style scoped>
-/* Pastikan QR SVG mengikuti ukuran kontainer (w-20 h-20), bukan atribut width/height bawaan. */
-.qr-box :deep(svg) {
-    width: 100% !important;
-    height: 100% !important;
-}
 
 @media print {
     body {

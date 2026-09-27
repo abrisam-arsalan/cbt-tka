@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Attempt;
 use App\Models\Exam;
+use App\Services\ExamSessionTokenService;
 use App\Services\ExamTimerService;
 use App\Services\PresenceService;
 use Illuminate\Http\RedirectResponse;
@@ -17,12 +18,16 @@ class MonitoringController extends Controller
     public function __construct(
         private readonly PresenceService $presence,
         private readonly ExamTimerService $timer,
+        private readonly ExamSessionTokenService $tokens,
     ) {}
 
     public function index(Exam $exam): Response
     {
         $rows = $this->presence->monitoringRows($exam);
         $summary = $this->presence->summarize($rows);
+
+        // Token sesi aktif — diberitahukan pengawas ke siswa di ruang ujian.
+        $session = $this->tokens->current($exam);
 
         return Inertia::render('Admin/Monitoring/Index', [
             'title' => 'Monitoring: '.$exam->title,
@@ -32,6 +37,10 @@ class MonitoringController extends Controller
                 'status' => $exam->status->value,
                 'duration_minutes' => (int) $exam->duration_minutes,
                 'grace_minutes' => $exam->graceMinutes(),
+            ],
+            'session_token' => [
+                'token' => $session['token'],
+                'expires_at' => $session['expires_at'],
             ],
             'summary' => $summary,
             'rows' => $rows,

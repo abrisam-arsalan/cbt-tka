@@ -21,7 +21,7 @@ const submit = () => form.post(route('student.exam.join.attempt', props.exam.id)
         <div class="mx-auto max-w-md">
             <div class="mb-4">
                 <h2 class="text-xl font-bold text-slate-900">{{ exam.title }}</h2>
-                <p class="text-sm text-slate-500">Masukkan token ujian yang tertera di kartu ujian Anda.</p>
+                <p class="text-sm text-slate-500">Masukkan token sesi yang diumumkan pengawas di depan ruang ujian.</p>
             </div>
 
             <form
@@ -29,7 +29,7 @@ const submit = () => form.post(route('student.exam.join.attempt', props.exam.id)
                 class="rounded-2xl bg-white p-6 shadow-sm"
             >
                 <label class="mb-2 block text-sm font-semibold text-slate-700">
-                    Token Ujian
+                    Token Sesi
                 </label>
                 <input
                     v-model="form.token"
@@ -62,9 +62,9 @@ const submit = () => form.post(route('student.exam.join.attempt', props.exam.id)
             <div class="mt-4 rounded-xl bg-brand-50 p-4 text-xs text-brand-800">
                 <p class="mb-1 font-semibold">Petunjuk:</p>
                 <ul class="list-inside list-disc space-y-0.5">
-                    <li>Salin token persis seperti di kartu ujian.</li>
+                    <li>Token sesi sama untuk semua peserta dan berganti otomatis tiap 30 menit.</li>
+                    <li>Minta token terbaru ke pengawas bila token di layar sudah kedaluwarsa.</li>
                     <li>Tanda hubung (-) boleh diabaikan.</li>
-                    <li>Token bersifat pribadi — jangan berikan ke siswa lain.</li>
                 </ul>
             </div>
         </div>

@@ -31,7 +31,7 @@ onMounted(() => {
         </div>
 
         <div class="print-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div v-for="card in cards" :key="card.student_name + card.token" class="exam-card p-4">
+            <div v-for="card in cards" :key="card.username + card.student_name" class="exam-card p-4">
                 <div class="mb-2 flex items-center justify-between">
                     <div>
                         <p class="text-sm font-bold text-slate-800">{{ card.school_name }}</p>
@@ -40,27 +40,17 @@ onMounted(() => {
                     <img v-if="card.logo_url" :src="card.logo_url" class="h-10 w-10 object-contain" alt="logo" />
                 </div>
 
-                <div class="mb-3 flex gap-3">
-                    <div class="flex-1">
-                        <p class="text-xs text-slate-400">Nama Siswa</p>
-                        <p class="font-semibold text-slate-900">{{ card.student_name }}</p>
-                        <p class="text-xs text-slate-500">{{ card.class_name }}</p>
-                        <p class="text-xs text-slate-500">{{ card.exam_title }}</p>
-                        <p class="mt-1 text-xs text-slate-400">{{ card.duration_minutes }} menit · {{ card.start_at }}</p>
-                    </div>
-
-                    <div v-if="card.qr_svg" class="shrink-0">
-                        <div class="h-24 w-24" v-html="card.qr_svg"></div>
-                    </div>
-                </div>
-
-                <div class="mb-2 rounded-lg bg-slate-100 px-3 py-2 text-center">
-                    <p class="text-xs text-slate-400">Token Ujian</p>
-                    <p class="text-lg font-bold tracking-widest text-slate-900">{{ card.token || '—' }}</p>
+                <div class="mb-3">
+                    <p class="text-xs text-slate-400">Nama Siswa</p>
+                    <p class="font-semibold text-slate-900">{{ card.student_name }}</p>
+                    <p class="text-xs text-slate-500">{{ card.class_name }}</p>
+                    <p class="text-xs text-slate-500">{{ card.exam_title }}</p>
+                    <p class="mt-1 text-xs text-slate-400">{{ card.duration_minutes }} menit · {{ card.start_at }}</p>
                 </div>
 
                 <!-- Akun login: username (NISN) dan PIN dicetak terpisah;
-                     PIN angka, username NISN — keduanya berbeda. -->
+                     PIN angka, username NISN — keduanya berbeda. Token sesi
+                     TIDAK dicetak: diumumkan pengawas, berganti tiap 30 menit. -->
                 <div class="grid grid-cols-2 gap-2">
                     <div class="rounded-lg border border-slate-300 px-3 py-2 text-center">
                         <p class="text-xs text-slate-400">Username (NISN)</p>

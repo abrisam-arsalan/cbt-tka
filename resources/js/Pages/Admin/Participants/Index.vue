@@ -24,19 +24,10 @@ const bulkAdd = () => {
         alert('Pilih kelas terlebih dahulu.');
         return;
     }
-    if (!confirm('Tambahkan seluruh siswa kelas ini sebagai peserta beserta token ujiannya?')) return;
+    if (!confirm('Tambahkan seluruh siswa kelas ini sebagai peserta?')) return;
     bulkForm.post(route('admin.exams.participants.bulk', props.exam.id), {
         onSuccess: () => bulkForm.reset(),
     });
-};
-
-const generateTokens = () => {
-    router.post(route('admin.exams.participants.generate-tokens', props.exam.id));
-};
-
-const regenerateToken = (participant) => {
-    if (!confirm(`Generate ulang token untuk ${participant.name}? Token lama tidak berlaku.`)) return;
-    router.post(route('admin.exams.participants.regenerate-token', { exam: props.exam.id, participant: participant.id }));
 };
 
 const destroy = (participant) => {
@@ -55,9 +46,6 @@ const destroy = (participant) => {
                 <h2 class="text-xl font-bold text-slate-900">Peserta Ujian</h2>
                 <p class="text-sm text-slate-500">{{ exam.title }}</p>
             </div>
-            <button class="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white" @click="generateTokens">
-                Generate Token
-            </button>
         </div>
 
         <!-- Tambah peserta -->
@@ -102,7 +90,6 @@ const destroy = (participant) => {
                     <tr>
                         <th class="px-4 py-3">Nama</th>
                         <th class="px-4 py-3">Kelas</th>
-                        <th class="px-4 py-3">Token</th>
                         <th class="px-4 py-3">Aksi</th>
                     </tr>
                 </thead>
@@ -111,13 +98,7 @@ const destroy = (participant) => {
                         <td class="px-4 py-3 font-medium text-slate-800">{{ participant.name }}</td>
                         <td class="px-4 py-3">{{ participant.class_name }}</td>
                         <td class="px-4 py-3">
-                            <span :class="participant.has_token ? 'text-success-600' : 'text-danger-600'">
-                                {{ participant.has_token ? '✓ Tersedia' : '✗ Belum ada' }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3">
                             <div class="flex flex-wrap gap-2">
-                                <button class="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700" @click="regenerateToken(participant)">Regenerate Token</button>
                                 <button class="rounded-lg bg-danger-50 px-2.5 py-1 text-xs font-semibold text-danger-700" @click="destroy(participant)">Hapus</button>
                             </div>
                         </td>

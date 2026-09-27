@@ -4,25 +4,16 @@ namespace App\Services;
 
 use App\Models\Exam;
 use App\Models\ExamParticipant;
-use BaconQrCode\Renderer\Image\SvgImageBackEnd;
-use BaconQrCode\Renderer\ImageRenderer;
-use BaconQrCode\Renderer\RendererStyle\RendererStyle;
-use BaconQrCode\Writer;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Route;
+use App\Models\User;
 use Illuminate\Support\Facades\URL;
 
 /**
- * Manajemen token dan kartu ujian.
+ * Kartu ujian.
  *
- * Token disimpan dua kali:
- *   token_hash    SHA-256 hex, diindeks unik, dipakai untuk verifikasi join.
- *   token_cipher  plaintext terenkripsi (cast "encrypted"), dipakai hanya
- *                 saat mencetak ulang kartu ujian.
- *
- * Dengan skema ini database yang bocor hanya memperlihatkan hash (tidak bisa
- * dipakai login), tapi admin tetap bisa mencetak ulang kartu tanpa harus
- * regenerate token.
+ * Kartu hanya memuat AKUN LOGIN siswa: username (NISN) + PIN, plus URL
+ * login. Token TIDAK dicetak lagi per siswa — kini satu token sesi per
+ * ujian yang berganti otomatis tiap 30 menit dan diumumkan pengawas dari
+ * halaman Monitoring (lihat ExamSessionTokenService).
  */
 class CardService
 {
@@ -33,51 +24,6 @@ class CardService
     ) {}
 
     /**
-     * Generate token baru. Mengembalikan plaintext yang siap dicetak.
-     */
-    public function generateToken(ExamParticipant $participant): string
-    {
-        return $this->regenerateToken($participant, actor: null);
-    }
-
-    public function regenerateToken(ExamParticipant $participant, $actor = null): string
-    {
-        $generator = TokenGenerator::fromConfig();
-        $raw = $generator->generateRaw();
-        $hash = hash('sha256', $raw);
-
-        $participant->forceFill([
-            'token_hash' => $hash,
-            'token_cipher' => $raw,
-            'token_generated_at' => now(),
-            'is_active' => true,
-        ])->save();
-
-        $this->audit->log(
-            action: 'exam.token.regenerated',
-            subject: $participant,
-            description: "Token ujian digenerate ulang untuk {$participant->user?->username}.",
-        );
-
-        return $generator->format($raw);
-    }
-
-    /**
-     * Verifikasi token yang dimasukkan siswa saat join ujian.
-     */
-    public function verify(Exam $exam, string $rawToken): ?ExamParticipant
-    {
-        $generator = TokenGenerator::fromConfig();
-        $hash = hash('sha256', $generator->normalize($rawToken));
-
-        return ExamParticipant::query()
-            ->where('exam_id', $exam->id)
-            ->where('token_hash', $hash)
-            ->where('is_active', true)
-            ->first();
-    }
-
-    /**
      * Data satu kartu ujian untuk dicetak.
      *
      * @return array<string, mixed>
@@ -86,20 +32,13 @@ class CardService
     {
         $participant->loadMissing(['user.schoolClass', 'exam']);
 
-        $generator = TokenGenerator::fromConfig();
-        $plain = $participant->plainToken();
-        $formatted = $plain !== null ? $generator->format($plain) : null;
-
         return [
             'school_name' => $this->settings->get('app.school_name') ?: config('cbt.card.school_name'),
             'school_city' => $this->settings->get('app.school_city') ?: '',
             'logo_url' => $this->resolveLogoUrl(),
             'student_name' => $participant->user?->name ?? '(siswa terhapus)',
-            // Akun login tercetak di kartu: username (NISN) + PIN.
-            // PIN tidak tersedia utk akun lama yang belum pernah reset —
-            // admin bisa reset PIN dari menu Siswa bila pin_cipher kosong.
             'username' => $participant->user?->username,
-            'login_pin' => $this->pins->plain($participant->user),
+            'login_pin' => $this->safePin($participant->user),
             'login_url' => $this->loginUrl(),
             'nisn' => $participant->user?->nisn,
             'class_name' => $participant->user?->schoolClass?->name ?? '-',
@@ -108,12 +47,21 @@ class CardService
             'duration_minutes' => (int) ($participant->exam?->duration_minutes ?? 0),
             'start_at' => $participant->exam?->start_at?->format('d/m/Y H:i'),
             'end_at' => $participant->exam?->end_at?->format('d/m/Y H:i'),
-            'token' => $formatted,
-            'token_generated_at' => $participant->token_generated_at?->format('d/m/Y H:i'),
-            'qr_svg' => $formatted !== null ? $this->renderJoinQrSvg($participant->exam, $formatted) : null,
-            'qr_size' => (int) config('cbt.card.qr_size', 180),
             'rules' => $this->examRules($participant),
         ];
+    }
+
+    /**
+     * Decrypt pin_cipher dengan aman: data dari APP_KEY lama tidak boleh
+     * membuat halaman kartu 500 — kembalikan null bila gagal.
+     */
+    private function safePin(?User $user): ?string
+    {
+        try {
+            return $this->pins->plain($user);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
@@ -133,46 +81,6 @@ class CardService
     }
 
     /**
-     * Generate token untuk seluruh peserta yang belum punya token.
-     *
-     * @return array<int, string> keyed by participant id
-     */
-    public function ensureTokensForExam(Exam $exam): array
-    {
-        $generated = [];
-
-        $exam->participants()
-            ->where('is_active', true)
-            ->where(function ($query) {
-                $query->whereNull('token_hash')
-                    ->orWhere('token_hash', '');
-            })
-            ->each(function (ExamParticipant $participant) use (&$generated) {
-                $generated[$participant->id] = $this->generateToken($participant);
-            });
-
-        return $generated;
-    }
-
-    /**
-     * SVG QR code berisi URL join + token.
-     *
-     * Dipakai sebagai gambar inline di kartu ujian dan tidak memerlukan
-     * endpoint terpisah, jadi browser yang offline tetap bisa menampilkan kartu.
-     */
-    public function renderJoinQrSvg(Exam $exam, string $formattedToken): string
-    {
-        $url = $this->joinUrl($exam, $formattedToken);
-
-        $renderer = new ImageRenderer(
-            new RendererStyle((int) config('cbt.card.qr_size', 180)),
-            new SvgImageBackEnd,
-        );
-
-        return (new Writer($renderer))->writeString($url);
-    }
-
-    /**
      * URL halaman login — dicetak sbg teks di kartu agar bisa dibuka/diketik
      * dari HP siswa (di luar PC laboratorium sekolah).
      */
@@ -182,20 +90,6 @@ class CardService
             return URL::route('login');
         } catch (\Throwable) {
             return URL::to('/login');
-        }
-    }
-
-    private function joinUrl(Exam $exam, string $formattedToken): string
-    {
-        try {
-            return Route::has('student.exam.join-with-token')
-                ? URL::signedRoute('student.exam.join-with-token', [
-                    'exam' => $exam->id,
-                    'token' => $formattedToken,
-                ])
-                : URL::to('/ujian/join', ['exam' => $exam->id, 'token' => $formattedToken]);
-        } catch (\Throwable) {
-            return URL::to('/ujian/join', ['exam' => $exam->id, 'token' => $formattedToken]);
         }
     }
 
@@ -222,7 +116,8 @@ class CardService
     private function examRules(ExamParticipant $participant): array
     {
         $rules = [
-            'Bawa kartu ini saat ujian berlangsung. Token hanya berlaku untuk satu siswa.',
+            'Bawa kartu ini saat ujian berlangsung. Login memakai Username + PIN pada kartu.',
+            'Token ujian diumumkan pengawas di ruang ujian dan berganti setiap 30 menit.',
             'Masuk ke ruang ujian minimal 10 menit sebelum jadwal mulai.',
             'Pastikan perangkat terisi penuh atau terhubung charger.',
             'Tidak diperkenankan membuka tab atau aplikasi lain selama ujian.',

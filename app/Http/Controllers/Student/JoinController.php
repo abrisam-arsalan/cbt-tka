@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Student\JoinExamRequest;
 use App\Models\Exam;
 use App\Models\Attempt;
-use App\Services\CardService;
+use App\Services\ExamSessionTokenService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -30,21 +30,27 @@ class JoinController extends Controller
         ]);
     }
 
-    public function store(JoinExamRequest $request, Exam $exam, CardService $cards): RedirectResponse
+    public function store(JoinExamRequest $request, Exam $exam, ExamSessionTokenService $tokens): RedirectResponse
     {
         $user = $request->user();
 
-        $participant = $cards->verify($exam, (string) $request->input('token'));
+        // Siswa harus terdaftar sebagai peserta (dikelola admin via menu Peserta).
+        $isParticipant = $exam->participants()
+            ->where('user_id', $user->id)
+            ->where('is_active', true)
+            ->exists();
 
-        if ($participant === null) {
+        if (! $isParticipant) {
             return back()->withErrors([
-                'token' => 'Token tidak valid atau peserta tidak ditemukan.',
+                'token' => 'Anda tidak terdaftar sebagai peserta ujian ini. Hubungi panitia.',
             ]);
         }
 
-        if ((int) $participant->user_id !== (int) $user->id) {
+        // Token sesi (satu untuk semua peserta, berganti tiap 30 menit)
+        // diumumkan pengawas dari halaman Monitoring.
+        if (! $tokens->verify($exam, (string) $request->input('token'))) {
             return back()->withErrors([
-                'token' => 'Token ini bukan milik akun Anda.',
+                'token' => 'Token salah atau sudah kedaluwarsa (berganti tiap 30 menit). Minta token terbaru ke pengawas.',
             ]);
         }
 

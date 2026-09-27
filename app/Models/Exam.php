@@ -36,6 +36,9 @@ class Exam extends Model
             'shuffle_options' => 'boolean',
             'duration_minutes' => 'integer',
             'offline_grace_minutes' => 'integer',
+            'session_token_cipher' => 'encrypted',
+            'session_window' => 'integer',
+            'previous_token_window' => 'integer',
         ];
     }
 

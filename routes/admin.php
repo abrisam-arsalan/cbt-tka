@@ -100,12 +100,9 @@ Route::middleware(['auth', 'role:admin', 'throttle:admin'])->group(function () {
     // Bank soal (per ujian)
     Route::resource('exams.questions', QuestionController::class)->except(['show']);
 
-    // Peserta ujian + generate/regenerate token
+    // Peserta ujian (token tidak lagi per peserta — kini token sesi per ujian,
+    // lihat ExamSessionTokenService; siswa join dengan token dari pengawas)
     Route::resource('exams.participants', ParticipantController::class)->only(['index', 'store', 'destroy']);
-    Route::post('exams/{exam}/participants/generate-token', [ParticipantController::class, 'generateTokens'])
-        ->name('exams.participants.generate-tokens');
-    Route::post('exams/{exam}/participants/{participant}/regenerate-token', [ParticipantController::class, 'regenerateToken'])
-        ->name('exams.participants.regenerate-token');
     Route::post('exams/{exam}/participants/bulk', [ParticipantController::class, 'bulk'])
         ->name('exams.participants.bulk');
 

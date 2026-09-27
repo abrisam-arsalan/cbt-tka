@@ -10,6 +10,7 @@ const props = defineProps({
     rows: { type: Array, default: () => [] },
     presence_driver: String,
     refresh_seconds: Number,
+    session_token: { type: Object, default: null },
 });
 
 let refreshTimer = null;
@@ -50,10 +51,22 @@ const post = (name, attemptId) => router.post(route(name, { exam: props.exam.id,
     <AdminLayout>
         <Head :title="title" />
 
-        <div class="mb-4 flex items-center justify-between">
+        <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h2 class="text-xl font-bold text-slate-900">Monitoring Ujian</h2>
                 <p class="text-xs text-slate-400">{{ exam.title }} · presence: {{ presence_driver }}</p>
+            </div>
+
+            <!-- Token sesi: umumkan ke siswa, berganti otomatis tiap 30 menit -->
+            <div v-if="session_token" class="rounded-xl bg-brand-600 px-5 py-3 text-white shadow-sm">
+                <p class="text-[11px] font-semibold uppercase tracking-wider opacity-80">Token Sesi — umumkan ke siswa</p>
+                <div class="flex items-center gap-3">
+                    <span class="font-mono text-2xl font-bold tracking-widest">{{ session_token.token }}</span>
+                    <span class="text-xs opacity-90">
+                        berlaku s/d
+                        {{ new Date(session_token.expires_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }}
+                    </span>
+                </div>
             </div>
         </div>
 

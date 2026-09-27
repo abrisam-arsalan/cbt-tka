@@ -8,7 +8,6 @@ use App\Models\ExamParticipant;
 use App\Models\SchoolClass;
 use App\Models\User;
 use App\Services\AuditLogService;
-use App\Services\CardService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +18,6 @@ use Inertia\Response;
 class ParticipantController extends Controller
 {
     public function __construct(
-        private readonly CardService $cards,
         private readonly AuditLogService $audit,
     ) {}
 
@@ -72,7 +70,6 @@ class ParticipantController extends Controller
                 'name' => $p->user?->name ?? '(terhapus)',
                 'username' => $p->user?->username,
                 'class_name' => $p->user?->schoolClass?->name ?? '-',
-                'has_token' => $p->hasToken(),
                 'is_active' => (bool) $p->is_active,
                 'first_joined_at' => $p->first_joined_at?->toIso8601String(),
             ]),
@@ -98,11 +95,8 @@ class ParticipantController extends Controller
 
         $participant = $exam->participants()->create([
             'user_id' => $validated['user_id'],
-            'token_hash' => '',
             'is_active' => true,
         ]);
-
-        $this->cards->generateToken($participant);
 
         $this->audit->log(
             action: 'participant.added',
@@ -110,7 +104,7 @@ class ParticipantController extends Controller
             description: "Peserta ditambahkan ke ujian {$exam->title}.",
         );
 
-        return back()->with('success', 'Peserta berhasil ditambahkan beserta token ujian.');
+        return back()->with('success', 'Peserta berhasil ditambahkan.');
     }
 
     /**
@@ -146,13 +140,11 @@ class ParticipantController extends Controller
         $added = 0;
 
         foreach ($students as $student) {
-            $participant = $exam->participants()->create([
+            $exam->participants()->create([
                 'user_id' => $student->id,
-                'token_hash' => '',
                 'is_active' => true,
             ]);
 
-            $this->cards->generateToken($participant);
             $added++;
         }
 
@@ -163,7 +155,7 @@ class ParticipantController extends Controller
             meta: ['class_id' => $schoolClass->id, 'added' => $added],
         );
 
-        return back()->with('success', "{$added} siswa kelas {$schoolClass->name} berhasil ditambahkan beserta token ujian.");
+        return back()->with('success', "{$added} siswa kelas {$schoolClass->name} berhasil ditambahkan.");
     }
 
     public function destroy(Exam $exam, ExamParticipant $participant): RedirectResponse
@@ -197,25 +189,4 @@ class ParticipantController extends Controller
         return back()->with('success', 'Peserta berhasil dihapus.');
     }
 
-    public function generateTokens(Exam $exam): RedirectResponse
-    {
-        $generated = $this->cards->ensureTokensForExam($exam);
-
-        if ($generated === []) {
-            return back()->with('info', 'Semua peserta sudah memiliki token.');
-        }
-
-        return back()->with('success', count($generated).' token berhasil digenerate.');
-    }
-
-    public function regenerateToken(Exam $exam, ExamParticipant $participant): RedirectResponse
-    {
-        if ((int) $participant->exam_id !== (int) $exam->id) {
-            abort(404);
-        }
-
-        $this->cards->regenerateToken($participant, request()->user());
-
-        return back()->with('success', 'Token peserta berhasil digenerate ulang. Cetak ulang kartu ujiannya.');
-    }
 }
