@@ -53,7 +53,7 @@ const submit = () => form.post(route('student.exam.join.attempt', props.exam.id)
                 <button
                     type="submit"
                     :disabled="form.processing"
-                    class="flex h-12 w-full items-center justify-center rounded-xl bg-brand-600 font-semibold text-white disabled:opacity-50"
+                    class="flex h-14 w-full text-base items-center justify-center rounded-xl bg-brand-600 font-semibold text-white disabled:opacity-50"
                 >
                     {{ form.processing ? 'Memeriksa...' : 'Gabung Ujian' }}
                 </button>

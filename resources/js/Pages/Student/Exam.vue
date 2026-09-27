@@ -572,9 +572,9 @@ onBeforeUnmount(() => {
                         ⏱ {{ timerLabel }}
                     </span>
 
-                    <span class="flex items-center gap-1.5 text-xs text-slate-600">
+                    <span class="flex shrink-0 items-center gap-1.5 text-xs text-slate-600" :title="syncLabel">
                         <span class="h-2.5 w-2.5 rounded-full" :class="syncDotClass"></span>
-                        {{ syncLabel }}
+                        <span class="hidden min-[400px]:inline">{{ syncLabel }}</span>
                     </span>
 
                     <!-- Tombol Kumpulkan + dropdown Daftar Soal di bawahnya -->

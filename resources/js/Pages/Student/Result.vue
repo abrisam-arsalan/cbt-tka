@@ -79,14 +79,14 @@ const statusOf = (detail) => {
                     </div>
 
                     <img v-if="detail.media_url" :src="detail.media_url" alt="Gambar soal" class="mb-2 max-h-56 rounded-lg" />
-                    <p class="mb-3 whitespace-pre-line text-sm text-slate-800">{{ detail.question_text }}</p>
+                    <p class="mb-3 whitespace-pre-line text-[15px] sm:text-base leading-relaxed text-slate-800">{{ detail.question_text }}</p>
 
                     <!-- PG / PGK / Boolean -->
                     <div v-if="detail.options.length > 0" class="space-y-1.5">
                         <div
                             v-for="option in detail.options"
                             :key="option.id"
-                            class="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                            class="flex items-center gap-2 rounded-lg border px-3 py-2.5 text-[15px]"
                             :class="optionClass(detail, option)"
                         >
                             <span class="shrink-0">
@@ -97,7 +97,7 @@ const statusOf = (detail) => {
                     </div>
 
                     <!-- Matching -->
-                    <div v-else-if="detail.pairs.length > 0" class="space-y-1.5 text-sm">
+                    <div v-else-if="detail.pairs.length > 0" class="space-y-1.5 text-[15px]">
                         <div v-for="pair in detail.pairs" :key="pair.id" class="flex justify-between rounded-lg bg-slate-50 px-3 py-2">
                             <span>{{ pair.left }} → {{ pair.right }}</span>
                         </div>
