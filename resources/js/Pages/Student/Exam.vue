@@ -691,7 +691,7 @@ onBeforeUnmount(() => {
                             >
                                 <span v-if="payloadOf(currentQuestion.id)?.option_id === option.id">✓</span>
                             </span>
-                            <span>{{ option.label ? option.label + '. ' : '' }}{{ option.text }}</span>
+                            <span>{{ option.text }}</span>
                         </button>
 
                         <!-- PGK -->
@@ -711,7 +711,7 @@ onBeforeUnmount(() => {
                             >
                                 <span v-if="(payloadOf(currentQuestion.id)?.option_ids ?? []).includes(option.id)">✓</span>
                             </span>
-                            <span>{{ option.label ? option.label + '. ' : '' }}{{ option.text }}</span>
+                            <span>{{ option.text }}</span>
                         </button>
 
                         <!-- Boolean -->

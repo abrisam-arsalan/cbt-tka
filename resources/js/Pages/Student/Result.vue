@@ -92,7 +92,7 @@ const statusOf = (detail) => {
                             <span class="shrink-0">
                                 {{ option.is_correct ? '✓' : (selectedOptionIds(detail).includes(option.id) ? '✗' : '') }}
                             </span>
-                            <span>{{ option.label ? option.label + '. ' : '' }}{{ option.text }}</span>
+                            <span>{{ option.text }}</span>
                         </div>
                     </div>
 
