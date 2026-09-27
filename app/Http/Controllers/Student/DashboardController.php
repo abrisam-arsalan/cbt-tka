@@ -53,7 +53,7 @@ class DashboardController extends Controller
                     'status_label' => $exam->status->label(),
                     'is_joinable' => $exam->isJoinableNow(),
                     'unavailable_reason' => $exam->unavailableReason(),
-                    'questions_count' => (int) $exam->questions_count,
+                    'questions_count' => $exam->effectiveQuestionCount(),
                     'attempt_status' => $attempt?->status->value,
                     'attempt_status_label' => $attempt?->status->label(),
                     'attempt_score' => $attempt?->score !== null ? (float) $attempt->score : null,

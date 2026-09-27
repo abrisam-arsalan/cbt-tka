@@ -98,6 +98,8 @@ class ExamController extends Controller
                 'description' => $exam->description,
                 'class_name' => $exam->schoolClass?->name,
                 'target_label' => $exam->targetLabel(),
+                'question_count' => $exam->question_count ? (int) $exam->question_count : null,
+                'total_active_questions' => $exam->questions()->where('is_active', true)->count(),
                 'duration_minutes' => (int) $exam->duration_minutes,
                 'start_at' => $exam->start_at?->toIso8601String(),
                 'end_at' => $exam->end_at?->toIso8601String(),
@@ -125,7 +127,7 @@ class ExamController extends Controller
             'title' => 'Edit: '.$exam->title,
             'edit' => true,
             'exam' => $exam->only([
-                'id', 'title', 'description', 'class_id', 'grade', 'duration_minutes',
+                'id', 'title', 'description', 'class_id', 'grade', 'duration_minutes', 'question_count',
                 'start_at', 'end_at', 'anti_cheat_enabled', 'anti_cheat_max_warnings',
                 'anti_cheat_action', 'shuffle_questions', 'shuffle_options', 'offline_grace_minutes',
             ]),

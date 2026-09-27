@@ -280,13 +280,25 @@ class ScoringService
      */
     private function loadQuestions(Attempt $attempt): EloquentCollection
     {
-        return Question::query()
+        $questions = Question::query()
             ->with(['options', 'matchingPairs'])
             ->where('exam_id', $attempt->exam_id)
             ->where('is_active', true)
             ->orderBy('order')
             ->orderBy('id')
             ->get();
+
+        // Ujian dengan question_count (mis. 30 dari bank 60): nilai HANYA
+        // subset soal yang memang ditampilkan ke siswa ini — pakai seed yang
+        // sama dengan layar ujian agar daftar identik.
+        $exam = $attempt->exam;
+
+        if ($exam !== null && $exam->question_count) {
+            $keep = $exam->questionSubsetIds((int) $attempt->shuffle_seed);
+            $questions = $questions->filter(fn (Question $q) => in_array((int) $q->id, $keep, true))->values();
+        }
+
+        return $questions;
     }
 
     /**

@@ -31,6 +31,8 @@ class StoreExamRequest extends FormRequest
             'batch_ids' => ['sometimes', 'nullable', 'array'],
             'batch_ids.*' => ['integer', 'exists:question_batches,id'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:600'],
+            // Jumlah soal yang keluar (mis. 30 dari bank 60). Kosong = semua.
+            'question_count' => [$isUpdate ? 'sometimes' : 'nullable', 'integer', 'min:1', 'max:600'],
             'start_at' => ['nullable', 'date'],
             'end_at' => ['nullable', 'date', 'after:start_at'],
             'anti_cheat_enabled' => [$isUpdate ? 'sometimes' : 'nullable', 'boolean'],

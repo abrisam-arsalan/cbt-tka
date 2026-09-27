@@ -59,6 +59,12 @@ class HistoryController extends Controller
             ->orderBy('id')
             ->get();
 
+        // Pembahasan hanya untuk subset soal yang memang keluar di attempt ini.
+        if ($attempt->exam?->question_count) {
+            $keep = $attempt->exam->questionSubsetIds((int) $attempt->shuffle_seed);
+            $questions = $questions->filter(fn ($q) => in_array((int) $q->id, $keep, true))->values();
+        }
+
         $answers = $attempt->answers->keyBy('question_id');
 
         return Inertia::render('Student/Result', [

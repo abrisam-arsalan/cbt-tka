@@ -102,6 +102,15 @@ class ExamController extends Controller
             ->orderBy('id')
             ->get();
 
+        // Bank 60 soal tapi ujian diset 30 => ambil subset milik siswa ini.
+        // Seed = shuffle_seed attempt (stabil); layar mulai pakai seed exam.
+        if ($exam->question_count) {
+            $keep = $exam->questionSubsetIds(
+                (int) ($attempt?->shuffle_seed ?? crc32('exam-'.$exam->id))
+            );
+            $questions = $questions->filter(fn ($q) => in_array((int) $q->id, $keep, true))->values();
+        }
+
         if ($attempt !== null) {
             $questions = $this->applyShuffle($exam, $questions, (int) $attempt->shuffle_seed);
         }
@@ -202,7 +211,7 @@ class ExamController extends Controller
                     'status_label' => $exam->status->label(),
                     'is_joinable' => $exam->isJoinableNow(),
                     'unavailable_reason' => $exam->unavailableReason(),
-                    'questions_count' => (int) $exam->questions_count,
+                    'questions_count' => $exam->effectiveQuestionCount(),
                     'attempt' => $this->attemptPayload($attempt),
                 ];
             });

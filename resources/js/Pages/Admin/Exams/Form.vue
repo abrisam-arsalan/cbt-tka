@@ -27,6 +27,7 @@ const form = useForm({
     grade: props.exam?.grade ?? '',
     batch_ids: [],
     duration_minutes: props.exam?.duration_minutes ?? 60,
+    question_count: props.exam?.question_count ?? '',
     offline_grace_minutes: props.exam?.offline_grace_minutes ?? 10,
     start_at: props.exam?.start_at ? toLocalInput(props.exam.start_at) : '',
     end_at: props.exam?.end_at ? toLocalInput(props.exam.end_at) : '',
@@ -99,6 +100,16 @@ const submit = () => {
                         <input v-model.number="form.offline_grace_minutes" type="number" min="0" max="120" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" />
                         <p class="mt-1 text-xs text-slate-400">Toleransi jawaban offline setelah waktu habis.</p>
                     </div>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-sm font-semibold text-slate-700">Jumlah Soal yang Keluar <span class="font-normal text-slate-400">(opsional)</span></label>
+                    <input v-model.number="form.question_count" type="number" min="1" max="600" placeholder="Kosongkan = semua soal" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" />
+                    <p class="mt-1 text-xs text-slate-400">
+                        Mis. bank berisi 60 soal, isi 30 => tiap siswa hanya mengerjakan 30 soal,
+                        dan susunannya acak berbeda per siswa namun konsisten sampai selesai.
+                    </p>
+                    <p v-if="form.errors.question_count" class="mt-1 text-xs text-danger-600">{{ form.errors.question_count }}</p>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">

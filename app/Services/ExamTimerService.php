@@ -72,7 +72,7 @@ class ExamTimerService
                 'deadline_at' => $deadline,
                 'expires_at' => $expires,
                 'shuffle_seed' => random_int(1, PHP_INT_MAX),
-                'total_questions' => $exam->questions()->where('is_active', true)->count(),
+                'total_questions' => $exam->effectiveQuestionCount(),
                 'started_ip' => substr($ip, 0, 45),
                 'user_agent' => substr($userAgent, 0, 255),
             ]);

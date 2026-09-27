@@ -41,6 +41,9 @@ const actionLabel = {
                     <span v-if="exam.target_label" class="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                         👥 {{ exam.target_label }}
                     </span>
+                    <span v-if="exam.question_count" class="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+                        📝 {{ exam.question_count }} soal keluar dari {{ exam.total_active_questions }} di bank
+                    </span>
                 </p>
             </div>
             <Link :href="route('admin.exams.edit', exam.id)" class="rounded-xl bg-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">

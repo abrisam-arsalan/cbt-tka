@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 #[Fillable([
-    'title', 'description', 'class_id', 'grade', 'duration_minutes', 'start_at', 'end_at', 'status', 'paused_at',
+    'title', 'description', 'class_id', 'grade', 'duration_minutes', 'question_count', 'start_at', 'end_at', 'status', 'paused_at',
     'anti_cheat_enabled', 'anti_cheat_max_warnings', 'anti_cheat_action',
     'shuffle_questions', 'shuffle_options', 'offline_grace_minutes', 'created_by',
 ])]
@@ -35,6 +35,7 @@ class Exam extends Model
             'shuffle_questions' => 'boolean',
             'shuffle_options' => 'boolean',
             'duration_minutes' => 'integer',
+            'question_count' => 'integer',
             'offline_grace_minutes' => 'integer',
             'session_token_cipher' => 'encrypted',
             'session_window' => 'integer',
@@ -102,6 +103,58 @@ class Exam extends Model
         }
 
         return 'Semua siswa';
+    }
+
+    /**
+     * Jumlah soal yang benar-benar dilihat siswa (entah 60 di bank, 30 di layar).
+     */
+    public function effectiveQuestionCount(): int
+    {
+        $total = $this->questions()->where('is_active', true)->count();
+
+        if ($this->question_count !== null && $this->question_count > 0) {
+            return min($total, (int) $this->question_count);
+        }
+
+        return $total;
+    }
+
+    /**
+     * ID soal yang menjadi milik attempt ber-seed ini.
+     *
+     * Bila question_count diset (mis. 30 dari bank 60), subset dipilih dengan
+     * Fisher-Yates ber-seed (LCG sama seperti pengacak tampilan) sehingga layar
+     * ujian, penilaian, dan pembahasan menghasilkan daftar yang SAMA persis
+     * untuk satu siswa, dan berbeda antar siswa.
+     *
+     * @return array<int, int>
+     */
+    public function questionSubsetIds(int $seed): array
+    {
+        $ids = $this->questions()
+            ->where('is_active', true)
+            ->orderBy('order')
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $take = (int) ($this->question_count ?? 0);
+
+        if ($take <= 0 || $take >= count($ids)) {
+            return $ids;
+        }
+
+        // State dikunci 31 bit: aritmetika LCG selalu integer 64-bit (PHP 8.5).
+        $state = $seed & 0x7fffffff;
+
+        for ($i = count($ids) - 1; $i > 0; $i--) {
+            $state = ($state * 1103515245 + 12345) & 0x7fffffff;
+            $j = $state % ($i + 1);
+            [$ids[$i], $ids[$j]] = [$ids[$j], $ids[$i]];
+        }
+
+        return array_slice($ids, 0, $take);
     }
 
     public function scopeStatus(Builder $query, ExamStatus|string $status): Builder
