@@ -645,7 +645,7 @@ onBeforeUnmount(() => {
                     <!-- Stimulus -->
                     <div
                         v-if="currentQuestion.stimulus"
-                        class="mb-4 whitespace-pre-line rounded-xl bg-white p-4 text-[15px] leading-relaxed text-slate-700 shadow-sm"
+                        class="mb-4 whitespace-pre-line rounded-xl bg-white p-4 text-base leading-relaxed text-slate-700 shadow-sm"
                     >
                         {{ currentQuestion.stimulus }}
                     </div>
@@ -667,7 +667,7 @@ onBeforeUnmount(() => {
                         <p v-if="currentQuestion.media_url" class="mb-3">
                             <img :src="currentQuestion.media_url" class="max-h-64 rounded-lg" alt="media" />
                         </p>
-                        <h2 class="whitespace-pre-line text-[17px] sm:text-lg font-semibold leading-relaxed text-slate-900">
+                        <h2 class="whitespace-pre-line text-lg font-semibold leading-relaxed text-slate-900">
                             {{ currentQuestion.question_text }}
                         </h2>
                     </div>
@@ -679,7 +679,7 @@ onBeforeUnmount(() => {
                             v-if="currentQuestion.type === 'pg'"
                             v-for="option in currentQuestion.options"
                             :key="option.id"
-                            class="flex min-h-14 w-full items-center gap-3 rounded-xl border-2 bg-white px-4 py-3.5 text-left text-[15px] transition-colors"
+                            class="flex min-h-14 w-full items-center gap-3 rounded-xl border-2 bg-white px-4 py-3.5 text-left text-base transition-colors"
                             :class="payloadOf(currentQuestion.id)?.option_id === option.id
                                 ? 'border-brand-600 bg-brand-50'
                                 : 'border-slate-200'"
@@ -699,7 +699,7 @@ onBeforeUnmount(() => {
                             v-if="currentQuestion.type === 'pgk'"
                             v-for="option in currentQuestion.options"
                             :key="option.id"
-                            class="flex min-h-14 w-full items-center gap-3 rounded-xl border-2 bg-white px-4 py-3.5 text-left text-[15px] transition-colors"
+                            class="flex min-h-14 w-full items-center gap-3 rounded-xl border-2 bg-white px-4 py-3.5 text-left text-base transition-colors"
                             :class="(payloadOf(currentQuestion.id)?.option_ids ?? []).includes(option.id)
                                 ? 'border-brand-600 bg-brand-50'
                                 : 'border-slate-200'"
@@ -758,9 +758,9 @@ onBeforeUnmount(() => {
 
             <!-- Bottom navigation: Sebelumnya - Ragu-ragu - Berikutnya -->
             <nav class="safe-bottom sticky bottom-0 z-30 border-t border-slate-200 bg-white">
-                <div class="flex items-center gap-2 px-4 py-3">
+                <div class="flex items-center justify-center gap-3 px-4 py-3">
                     <button
-                        class="h-12 flex-1 rounded-xl bg-slate-100 font-semibold text-slate-700 disabled:opacity-40 sm:flex-none sm:px-6"
+                        class="h-12 w-14 rounded-xl bg-slate-100 font-semibold text-slate-700 disabled:opacity-40 sm:w-auto sm:px-6"
                         :disabled="currentIndex === 0"
                         @click="goTo(currentIndex - 1)"
                         :aria-label="currentIndex === 0 ? 'Soal pertama' : 'Soal sebelumnya'"
@@ -786,7 +786,7 @@ onBeforeUnmount(() => {
 
                     <button
                         v-if="currentIndex < totalQuestions - 1"
-                        class="h-12 flex-1 rounded-xl bg-brand-600 font-semibold text-white sm:flex-none sm:px-6"
+                        class="h-12 w-14 rounded-xl bg-brand-600 font-semibold text-white sm:w-auto sm:px-6"
                         @click="goTo(currentIndex + 1)"
                         aria-label="Soal berikutnya"
                     >
@@ -794,7 +794,7 @@ onBeforeUnmount(() => {
                     </button>
                     <button
                         v-else
-                        class="h-12 flex-1 rounded-xl bg-success-600 font-semibold text-white sm:flex-none sm:px-6"
+                        class="h-12 rounded-xl bg-success-600 font-semibold text-white px-5 sm:px-6"
                         @click="requestSubmit"
                     >
                         Selesai ✓
