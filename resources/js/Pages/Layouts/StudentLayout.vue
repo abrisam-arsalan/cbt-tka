@@ -58,7 +58,7 @@ const logout = () => {
                     v-for="item in navItems"
                     :key="item.route"
                     :href="route(item.route)"
-                    class="flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] transition-colors"
+                    class="flex flex-1 flex-col items-center gap-1 py-2.5 text-xs transition-colors"
                     :class="[
                         route().current(item.route + '*') || route().current(item.route)
                             ? 'font-semibold text-brand-600'
@@ -78,7 +78,7 @@ const logout = () => {
 
                 <button
                     @click="logout"
-                    class="flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-slate-400 transition-colors hover:text-danger-600"
+                    class="flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium text-slate-400 transition-colors hover:text-danger-600"
                 >
                     <span class="flex h-8 w-12 items-center justify-center rounded-full">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">

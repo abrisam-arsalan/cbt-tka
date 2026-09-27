@@ -59,7 +59,7 @@ const submit = () => form.post(route('student.exam.join.attempt', props.exam.id)
                 </button>
             </form>
 
-            <div class="mt-4 rounded-xl bg-brand-50 p-4 text-xs text-brand-800">
+            <div class="mt-4 rounded-xl bg-brand-50 p-4 text-[13px] text-brand-800">
                 <p class="mb-1 font-semibold">Petunjuk:</p>
                 <ul class="list-inside list-disc space-y-0.5">
                     <li>Token sesi sama untuk semua peserta dan berganti otomatis tiap 30 menit.</li>

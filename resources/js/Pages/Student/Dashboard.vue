@@ -69,15 +69,15 @@ const primaryAction = (exam) => {
         <div class="mb-6 grid grid-cols-3 gap-3">
             <div class="rounded-2xl bg-white p-3 text-center shadow-sm ring-1 ring-slate-100">
                 <div class="text-2xl font-bold text-brand-600">{{ activeCount }}</div>
-                <div class="text-xs text-slate-500">Berjalan</div>
+                <div class="text-[13px] text-slate-500">Berjalan</div>
             </div>
             <div class="rounded-2xl bg-white p-3 text-center shadow-sm ring-1 ring-slate-100">
                 <div class="text-2xl font-bold text-emerald-600">{{ completedCount }}</div>
-                <div class="text-xs text-slate-500">Selesai</div>
+                <div class="text-[13px] text-slate-500">Selesai</div>
             </div>
             <div class="rounded-2xl bg-white p-3 text-center shadow-sm ring-1 ring-slate-100">
                 <div class="text-2xl font-bold text-slate-800">{{ exams.length }}</div>
-                <div class="text-xs text-slate-500">Total</div>
+                <div class="text-[13px] text-slate-500">Total</div>
             </div>
         </div>
 
@@ -114,7 +114,7 @@ const primaryAction = (exam) => {
                         {{ exam.description }}
                     </p>
 
-                    <div class="mb-3 grid grid-cols-2 gap-2 text-xs text-slate-500">
+                    <div class="mb-3 grid grid-cols-2 gap-2 text-[13px] text-slate-500">
                         <div class="flex items-center gap-1.5">
                             <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
                             {{ formatDate(exam.start_at) }}

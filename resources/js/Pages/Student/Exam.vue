@@ -660,7 +660,7 @@ onBeforeUnmount(() => {
                         </span>
                     </div>
 
-                    <p class="mb-1 text-xs text-slate-400">{{ currentQuestion.instruction }}</p>
+                    <p class="mb-1 text-[13px] text-slate-400">{{ currentQuestion.instruction }}</p>
 
                     <!-- Pertanyaan -->
                     <div class="mb-4 rounded-xl bg-white p-4 shadow-sm sm:p-5">
@@ -737,7 +737,7 @@ onBeforeUnmount(() => {
                             <div v-for="pair in currentQuestion.pairs" :key="pair.id" class="mb-3 last:mb-0">
                                 <div class="mb-1 text-sm font-medium text-slate-700">{{ pair.left_text }}</div>
                                 <select
-                                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm"
+                                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3.5 text-base"
                                     :value="(payloadOf(currentQuestion.id)?.mapping ?? {})[pair.id] ?? ''"
                                     @change="selectPair(currentQuestion, pair.id, $event.target.value)"
                                 >

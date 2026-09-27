@@ -41,7 +41,7 @@ const formatDate = (value) => {
                     </span>
                 </div>
 
-                <div class="mb-3 grid grid-cols-2 gap-2 text-xs text-slate-500">
+                <div class="mb-3 grid grid-cols-2 gap-2 text-[13px] text-slate-500">
                     <div>🗓 {{ formatDate(exam.start_at) }}</div>
                     <div>⏱ {{ exam.duration_minutes }} menit</div>
                     <div>📝 {{ exam.questions_count }} soal</div>
