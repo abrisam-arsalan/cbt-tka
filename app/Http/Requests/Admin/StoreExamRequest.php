@@ -24,15 +24,20 @@ class StoreExamRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            // Target ujian: class_id (rombel) ATAU grade (jenjang 7/8/9), tidak keduanya.
-            'class_id' => [$isUpdate ? 'sometimes' : 'nullable', 'integer', 'exists:classes,id', 'exclude_with:grade'],
-            'grade' => [$isUpdate ? 'sometimes' : 'nullable', 'string', Rule::in(['7', '8', '9']), 'exclude_with:class_id'],
+            // Target ujian: class_id (rombel) ATAU grade (jenjang 7/8/9).
+            // Form selalu mengirim kedua field — yang tidak dipakai bernilai
+            // kosong (menjadi null), jadi keduanya wajib nullable pada
+            // create MAUPUN update. exclude_with sengaja tidak dipakai karena
+            // key yang null tetap dianggap "ada" sehingga target tidak ikut
+            // tersimpan saat membuat ujian.
+            'class_id' => ['nullable', 'integer', 'exists:classes,id'],
+            'grade' => ['nullable', 'string', Rule::in(['7', '8', '9'])],
             // Hanya dipakai saat membuat ujian: bank soal yang isinya disalin.
             'batch_ids' => ['sometimes', 'nullable', 'array'],
             'batch_ids.*' => ['integer', 'exists:question_batches,id'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:600'],
             // Jumlah soal yang keluar (mis. 30 dari bank 60). Kosong = semua.
-            'question_count' => [$isUpdate ? 'sometimes' : 'nullable', 'integer', 'min:1', 'max:600'],
+            'question_count' => ['nullable', 'integer', 'min:1', 'max:600'],
             'start_at' => ['nullable', 'date'],
             'end_at' => ['nullable', 'date', 'after:start_at'],
             'anti_cheat_enabled' => [$isUpdate ? 'sometimes' : 'nullable', 'boolean'],
