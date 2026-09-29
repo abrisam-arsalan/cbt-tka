@@ -1,11 +1,36 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 
-defineProps({
+const props = defineProps({
     title: String,
     rows: { type: Array, default: () => [] },
+    exams: { type: Array, default: () => [] },
+    classes: { type: Array, default: () => [] },
+    filters: { type: Object, default: () => ({}) },
 });
+
+const exam = ref(props.filters.exam ? String(props.filters.exam) : '');
+const kelas = ref(props.filters.kelas ? String(props.filters.kelas) : '');
+
+const apply = () => {
+    const query = {};
+    if (exam.value) query.exam = exam.value;
+    if (kelas.value) query.kelas = kelas.value;
+    router.get(route('admin.results.index'), query, { preserveState: true, replace: true });
+};
+
+// Query string aktif untuk URL cetak/unduh (satu sumber kebenaran dg tabel).
+const activeQuery = computed(() => {
+    const parts = [];
+    if (exam.value) parts.push(`exam=${exam.value}`);
+    if (kelas.value) parts.push(`kelas=${kelas.value}`);
+    return parts.length ? '?' + parts.join('&') : '';
+});
+
+const cetakUrl = computed(() => route('admin.results.print') + activeQuery.value);
+const unduhUrl = computed(() => route('admin.results.export') + activeQuery.value);
 
 const formatDate = (value) => {
     if (!value) return '-';
@@ -17,7 +42,46 @@ const formatDate = (value) => {
     <AdminLayout>
         <Head :title="title" />
 
-        <h2 class="mb-4 text-xl font-bold text-gray-900">Hasil Ujian</h2>
+        <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900">Hasil Ujian</h2>
+                <p class="text-xs text-slate-400">{{ rows.length }} baris ditampilkan (500 hasil terbaru bila tanpa filter).</p>
+            </div>
+
+            <div class="flex flex-wrap items-end gap-2">
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-slate-500">Ujian</label>
+                    <select v-model="exam" class="h-11 rounded-lg border border-slate-300 px-3 text-sm" @change="apply">
+                        <option value="">Semua ujian</option>
+                        <option v-for="e in exams" :key="e.value" :value="e.value">{{ e.label }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs font-semibold text-slate-500">Kelas</label>
+                    <select v-model="kelas" class="h-11 rounded-lg border border-slate-300 px-3 text-sm" @change="apply">
+                        <option value="">Semua kelas</option>
+                        <option v-for="c in classes" :key="c.value" :value="c.value">{{ c.label }}</option>
+                    </select>
+                </div>
+
+                <!-- <a> biasa (bukan Link Inertia): cetak dibuka di tab baru,
+                     unduh harus berupa navigasi file agar tidak diintersep SPA. -->
+                <a
+                    :href="cetakUrl"
+                    target="_blank"
+                    rel="noopener"
+                    class="flex h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+                >
+                    🖨 Cetak (PDF)
+                </a>
+                <a
+                    :href="unduhUrl"
+                    class="flex h-11 items-center gap-2 rounded-xl bg-success-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-success-700"
+                >
+                    ⬇ Unduh Excel
+                </a>
+            </div>
+        </div>
 
         <div class="overflow-x-auto rounded-xl bg-white shadow-sm">
             <table class="w-full text-sm">

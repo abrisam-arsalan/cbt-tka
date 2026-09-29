@@ -6,9 +6,14 @@ use App\Enums\AttemptStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Attempt;
 use App\Models\Exam;
+use App\Models\SchoolClass;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
  * Halaman "hub" (titik masuk) untuk menu top-level di sidebar admin.
@@ -104,16 +109,123 @@ class HubController extends Controller
     }
 
     /**
-     * Hasil ujian: seluruh attempt yang sudah dinilai.
+     * Hasil ujian: seluruh attempt yang sudah dinilai (bisa difilter
+     * ?exam=ID dan ?kelas=ID — filter yang sama dipakai tombol Cetak & Unduh).
      */
-    public function hasil(): Response
+    public function hasil(Request $request): Response
     {
-        $rows = Attempt::query()
+        [$examId, $classId] = $this->resultFilters($request);
+
+        return Inertia::render('Admin/Results/Index', [
+            'title' => 'Hasil Ujian',
+            'rows' => $this->resultRows($examId, $classId, 500),
+            'exams' => Exam::query()->orderByDesc('id')->get(['id', 'title'])
+                ->map(fn (Exam $e) => ['value' => (int) $e->id, 'label' => $e->title])->all(),
+            'classes' => SchoolClass::query()->active()->ordered()->get(['id', 'name'])
+                ->map(fn (SchoolClass $c) => ['value' => (int) $c->id, 'label' => $c->name])->all(),
+            'filters' => ['exam' => $examId, 'kelas' => $classId],
+        ]);
+    }
+
+    /**
+     * Halaman ramah-print (A4) — dialog cetak terbuka otomatis sehingga bisa
+     * dicetak ke printer atau disimpan sebagai PDF.
+     */
+    public function hasilPrint(Request $request): Response
+    {
+        [$examId, $classId] = $this->resultFilters($request);
+
+        return Inertia::render('Admin/Results/Print', [
+            'title' => 'Cetak Hasil Ujian',
+            'rows' => $this->resultRows($examId, $classId, null),
+            'school_name' => (string) config('cbt.card.school_name'),
+            'exam_title' => $examId ? Exam::find($examId)?->title : null,
+            'class_name' => $classId ? SchoolClass::find($classId)?->name : null,
+            'generated_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Unduh hasil sebagai Excel (.xlsx) — seluruh baris, bukan hanya 500.
+     */
+    public function hasilExport(Request $request): \Symfony\Component\HttpFoundation\Response
+    {
+        [$examId, $classId] = $this->resultFilters($request);
+        $rows = $this->resultRows($examId, $classId, null);
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Hasil Ujian');
+
+        $header = ['No', 'Nama', 'NISN/Username', 'Kelas', 'Ujian', 'Nilai', 'Benar', 'Salah', 'Kosong', 'Total Soal', 'Dikumpulkan', 'Catatan'];
+
+        foreach ($header as $i => $text) {
+            $sheet->setCellValue([$i + 1, 1], $text);
+        }
+        $sheet->getStyle('A1:L1')->getFont()->setBold(true);
+        $sheet->freezePane('A2');
+
+        $r = 2;
+        foreach ($rows as $i => $row) {
+            $sheet->fromArray([
+                $i + 1,
+                $row['name'],
+                $row['username'] ?? '',
+                $row['class_name'],
+                $row['exam_title'],
+                $row['score'],
+                $row['correct_count'],
+                $row['wrong_count'],
+                $row['unanswered_count'],
+                $row['total_questions'],
+                $row['submitted_at'] ? Carbon::parse($row['submitted_at'])->format('d/m/Y H:i') : '',
+                $row['submit_reason_label'] ?? '',
+            ], null, 'A'.$r);
+            $r++;
+        }
+
+        // Lebar kolom adaptif agar rapi saat dibuka di Excel.
+        foreach (range('A', 'L') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $tmp = tempnam(sys_get_temp_dir(), 'cbt_hasil_').'.xlsx';
+        (new Xlsx($spreadsheet))->save($tmp);
+
+        $exam = $examId ? Exam::find($examId) : null;
+        $nama = 'Hasil-Ujian'.($exam ? '-'.Str::slug($exam->title) : '').'-'.now()->format('d-m-Y-His').'.xlsx';
+
+        return response()
+            ->download($tmp, $nama, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
+            ->deleteFileAfterSend(true);
+    }
+
+    /**
+     * @return array{0: ?int, 1: ?int}
+     */
+    private function resultFilters(Request $request): array
+    {
+        $examId = $request->query('exam') ? (int) $request->query('exam') : null;
+        $classId = $request->query('kelas') ? (int) $request->query('kelas') : null;
+
+        return [$examId, $classId];
+    }
+
+    /**
+     * Baris hasil ujian (attempt tersubmit terurut terbaru).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function resultRows(?int $examId, ?int $classId, ?int $limit): array
+    {
+        return Attempt::query()
             ->with(['user.schoolClass', 'exam'])
             ->where('status', AttemptStatus::Submitted->value)
+            ->when($examId, fn ($q) => $q->where('exam_id', $examId))
+            ->when($classId, fn ($q) => $q->whereHas('user', fn ($u) => $u->where('class_id', $classId)))
             ->orderByDesc('submitted_at')
             ->orderByDesc('id')
-            ->limit(500)
+            ->when($limit, fn ($q) => $q->limit($limit))
             ->get()
             ->map(fn (Attempt $attempt) => [
                 'id' => (int) $attempt->id,
@@ -128,12 +240,8 @@ class HubController extends Controller
                 'total_questions' => (int) $attempt->total_questions,
                 'submitted_at' => $attempt->submitted_at?->toIso8601String(),
                 'submit_reason_label' => $attempt->submit_reason?->label(),
-            ]);
-
-        return Inertia::render('Admin/Results/Index', [
-            'title' => 'Hasil Ujian',
-            'rows' => $rows,
-        ]);
+            ])
+            ->all();
     }
 
     /**

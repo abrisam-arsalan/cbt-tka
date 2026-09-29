@@ -9,10 +9,9 @@ use App\Models\Option;
 use App\Models\Question;
 use App\Models\QuestionTemplate;
 use App\Models\User;
+use App\Support\TabularReader;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Maatwebsite\Excel\SimpleExcelReader;
-use Maatwebsite\Excel\SimpleExcelWriter;
 
 /**
  * Impor soal massal dari file CSV atau XLSX.
@@ -28,8 +27,9 @@ use Maatwebsite\Excel\SimpleExcelWriter;
  * Template disediakan per tipe soal. Admin boleh memilih template yang sudah
  * disimpan di question_templates atau memakai template bawaan service ini.
  *
- * File besar (ribuan baris) diproses streaming lewat SimpleExcelReader
- * sehingga tidak memakan memori berlebihan di server dengan HDD.
+ * File CSV/TXT/XLSX dibaca lewat TabularReader (PhpSpreadsheet + deteksi
+ * pemisah Excel locale Indonesia) — paket Excel yang terpasang tidak
+ * menyediakan kelas SimpleExcel*.
  */
 class ImportQuestionService
 {
@@ -43,11 +43,11 @@ class ImportQuestionService
         $rows = $this->templateRows($type);
         $tmp = tempnam(sys_get_temp_dir(), 'cbt_tpl_').'.csv';
 
-        $writer = SimpleExcelWriter::create($tmp, 'csv');
+        $handle = fopen($tmp, 'wb');
         foreach ($rows as $row) {
-            $writer->addRow($row);
+            fputcsv($handle, $row);
         }
-        $writer->close();
+        fclose($handle);
 
         return $tmp;
     }
@@ -72,8 +72,7 @@ class ImportQuestionService
      */
     public function parseFile(UploadedFile $file, QuestionType $type): array
     {
-        $reader = SimpleExcelReader::create($file->getPathname());
-        $rows = $reader->getRows();
+        $rows = TabularReader::rows($file);
 
         $valid = [];
         $errors = [];
@@ -94,8 +93,6 @@ class ImportQuestionService
                 ];
             }
         }
-
-        $reader->close();
 
         return ['valid' => $valid, 'errors' => $errors];
     }

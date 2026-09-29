@@ -52,8 +52,10 @@ Route::middleware(['auth', 'role:admin', 'throttle:admin'])->group(function () {
     // Monitoring global (semua attempt berjalan lintas ujian).
     Route::get('monitoring', [HubController::class, 'monitoring'])->name('monitoring.index');
 
-    // Hasil ujian global.
+    // Hasil ujian global (+ cetak A4 & unduh Excel).
     Route::get('hasil', [HubController::class, 'hasil'])->name('results.index');
+    Route::get('hasil/cetak', [HubController::class, 'hasilPrint'])->name('results.print');
+    Route::get('hasil/unduh', [HubController::class, 'hasilExport'])->name('results.export');
 
     // Log aktivitas (alias ke audit log).
     Route::get('log-aktivitas', [AuditLogController::class, 'index'])->name('logs.index');
