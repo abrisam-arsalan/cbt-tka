@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\AttemptStatus;
+use App\Enums\ExamStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Attempt;
 use App\Models\Exam;
 use App\Models\SchoolClass;
+use App\Services\ExamSessionTokenService;
+use App\Services\PresenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -25,6 +28,11 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
  */
 class HubController extends Controller
 {
+    public function __construct(
+        private readonly PresenceService $presence,
+        private readonly ExamSessionTokenService $tokens,
+    ) {}
+
     public function bankSoal(): Response
     {
         return $this->examHub('Bank Soal', 'questions');
@@ -62,49 +70,55 @@ class HubController extends Controller
     }
 
     /**
-     * Monitoring global: seluruh attempt yang sedang berjalan lintas ujian.
+     * Monitoring gabungan (satunya halaman monitoring): semua ujian yang
+     * sedang/pernah berjalan ditampilakan dalam FORMAT REAL-TIME yang sama
+     * dengan monitoring per-ujian — presence, progress, sisa waktu,
+     * peringatan, dan menu Aksi di kanan tiap baris.
      */
     public function monitoring(): Response
     {
-        $now = now();
-
-        $rows = Attempt::query()
-            ->with(['user.schoolClass', 'exam'])
-            ->withCount('answers')
-            ->whereIn('status', [
-                AttemptStatus::InProgress->value,
-                AttemptStatus::Locked->value,
-                AttemptStatus::Expired->value,
-            ])
+        $exams = Exam::query()
+            ->where(function ($q) {
+                $q->whereIn('status', [ExamStatus::Active->value, ExamStatus::Paused->value])
+                    ->orWhereHas('attempts', fn ($a) => $a->whereIn('status', [
+                        AttemptStatus::InProgress->value,
+                        AttemptStatus::Locked->value,
+                        AttemptStatus::Expired->value,
+                    ]));
+            })
             ->orderByDesc('id')
-            ->get()
-            ->map(function (Attempt $attempt) use ($now) {
-                $total = (int) $attempt->total_questions;
-                $answered = (int) $attempt->answers_count;
+            ->get();
 
-                return [
-                    'attempt_id' => $attempt->id,
-                    'name' => $attempt->user?->name ?? '(siswa terhapus)',
-                    'username' => $attempt->user?->username,
-                    'class_name' => $attempt->user?->schoolClass?->name ?? '-',
-                    'exam_title' => $attempt->exam?->title ?? '(ujian terhapus)',
-                    'exam_id' => (int) $attempt->exam_id,
-                    'status' => $attempt->status->value,
-                    'status_label' => $attempt->status->label(),
-                    'answered_count' => $answered,
-                    'total_questions' => $total,
-                    'progress_percent' => $total > 0
-                        ? round(min(100, ($answered / $total) * 100), 1)
-                        : 0.0,
-                    'remaining_seconds' => $attempt->remainingSeconds($now),
-                    'warnings_count' => (int) $attempt->warnings_count,
-                    'deadline_at' => $attempt->deadline_at?->toIso8601String(),
-                ];
-            });
+        $rows = [];
+        $sessionTokens = [];
 
-        return Inertia::render('Admin/Monitoring/Global', [
+        foreach ($exams as $exam) {
+            $session = $this->tokens->current($exam);
+
+            $sessionTokens[] = [
+                'exam_id' => (int) $exam->id,
+                'exam_title' => $exam->title,
+                'token' => $session['token'],
+                'expires_at' => $session['expires_at'],
+            ];
+
+            foreach ($this->presence->monitoringRows($exam) as $row) {
+                $row['exam_id'] = (int) $exam->id;
+                $row['exam_title'] = $exam->title;
+                $rows[] = $row;
+            }
+        }
+
+        return Inertia::render('Admin/Monitoring/Index', [
             'title' => 'Monitoring Ujian',
+            'exam' => null,
             'rows' => $rows,
+            'summary' => $this->presence->summarize($rows),
+            'session_token' => null,
+            'session_tokens' => $sessionTokens,
+            'exam_options' => $exams->map(fn (Exam $e) => ['value' => (int) $e->id, 'label' => $e->title])->all(),
+            'presence_driver' => $this->presence->driverName(),
+            'refresh_seconds' => (int) config('cbt.presence.online_seconds', 45),
         ]);
     }
 
