@@ -401,11 +401,84 @@ function onWindowBlur() {
 }
 
 // ------------------------------------------------------------------
+// Wajib layar penuh (fullscreen) — mengunci layar saat siswa keluar.
+// Floating window / split-screen Android & tombol Esc memicu exit
+// fullscreen => tertangkap di sini sebagai event fullscreen_exit.
+// ------------------------------------------------------------------
+const fullscreenBlocked = ref(false);
+const fsNotice = ref('');
+
+const requireFullscreen = computed(
+    () => Boolean(props.exam.require_fullscreen) && props.attempt?.status === 'in_progress',
+);
+
+function fullscreenActive() {
+    return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+async function enterFullscreen(fromGesture = false) {
+    const el = document.documentElement;
+
+    try {
+        if (el.requestFullscreen) {
+            await el.requestFullscreen({ navigationUI: 'hide' });
+        } else if (el.webkitRequestFullscreen) {
+            el.webkitRequestFullscreen();
+        } else {
+            throw new Error('unsupported');
+        }
+        // Status akhir ditangani onFullscreenChange; overlay ditutup di sana.
+    } catch (err) {
+        // Percobaan otomatis (tanpa sentuhan) wajar ditolak browser — biarkan
+        // overlay tampil. Bila sentuhan siswa pun ditolak, perangkat memang
+        // tidak mendukung fullscreen: lepas kunci agar ujian tetap bisa jalan.
+        if (fromGesture || err?.name === 'NotFoundError') {
+            fsNotice.value = 'Perangkat/browser ini tidak mendukung layar penuh. Ujian tetap berjalan dengan pemantauan pindah-tab — kerjakan dengan jujur.';
+            fullscreenBlocked.value = false;
+        }
+    }
+}
+
+function onFullscreenChange() {
+    if (!requireFullscreen.value) return;
+
+    if (fullscreenActive()) {
+        fullscreenBlocked.value = false;
+        if (props.exam.anti_cheat_enabled) {
+            antiCheatQueue.push({ type: 'fullscreen_enter', message: 'Siswa kembali ke layar penuh.', meta: { at: new Date().toISOString() } });
+        }
+    } else {
+        fullscreenBlocked.value = true;
+        if (props.exam.anti_cheat_enabled) {
+            antiCheatQueue.push({ type: 'fullscreen_exit', message: 'Siswa keluar dari layar penuh.', meta: { at: new Date().toISOString() } });
+        }
+    }
+
+    clearTimeout(antiCheatTimer);
+    antiCheatTimer = setTimeout(flushAntiCheat, 1500);
+}
+
+function exitFullscreenQuiet() {
+    if (fullscreenActive()) {
+        const fn = document.exitFullscreen ?? document.webkitExitFullscreen;
+        try { fn?.call(document); } catch { /* abaikan */ }
+    }
+}
+
+// ------------------------------------------------------------------
 // Submit
 // ------------------------------------------------------------------
 const showSubmitModal = ref(false);
 const showFlagModal = ref(false);
+const submitConfirmed = ref(false);
 const unansweredCount = computed(() => totalQuestions.value - answeredCount.value);
+
+// Konfirmasi ulang selalu mulai dari belum-tercentang, agar siswa benar-benar
+// membaca bahwa menekan Kumpulkan = ujian berakhir permanen.
+const openSubmitModal = () => {
+    submitConfirmed.value = false;
+    showSubmitModal.value = true;
+};
 
 // Klik "Kumpulkan": beri peringatan dulu bila masih ada soal ditandai
 // ragu-ragu, supaya siswa meninjau & melepas centangnya.
@@ -414,12 +487,12 @@ const requestSubmit = () => {
         showFlagModal.value = true;
         return;
     }
-    showSubmitModal.value = true;
+    openSubmitModal();
 };
 
 const proceedToSubmit = () => {
     showFlagModal.value = false;
-    showSubmitModal.value = true;
+    openSubmitModal();
 };
 
 async function doSubmit() {
@@ -514,6 +587,18 @@ onMounted(() => {
         document.addEventListener('visibilitychange', onVisibilityChange);
         window.addEventListener('blur', onWindowBlur);
 
+        if (requireFullscreen.value) {
+            document.addEventListener('fullscreenchange', onFullscreenChange);
+            document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+
+            // Bila siswa tiba di halaman ini tanpa layar penuh (navigasi
+            // membatalkan fullscreen), kunci layar sampai ia menekan tombol.
+            if (!fullscreenActive()) {
+                fullscreenBlocked.value = true;
+                enterFullscreen(); // coba otomatis; gagal => tombol tetap tampil
+            }
+        }
+
         if (outbox.value.length > 0) scheduleFlush(1000);
     }
 });
@@ -527,6 +612,9 @@ onBeforeUnmount(() => {
     window.removeEventListener('offline', markOffline);
     document.removeEventListener('visibilitychange', onVisibilityChange);
     window.removeEventListener('blur', onWindowBlur);
+    document.removeEventListener('fullscreenchange', onFullscreenChange);
+    document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+    exitFullscreenQuiet(); // halaman ujian selesai (submit/keluar) => lepas kunci layar
 });
 </script>
 
@@ -546,6 +634,7 @@ onBeforeUnmount(() => {
                     <li>✅ Jawaban tersimpan otomatis, termasuk saat offline.</li>
                     <li>⏱ Waktu dihitung server, bukan jam HP Anda.</li>
                     <li v-if="exam.anti_cheat_enabled">👁 Ujian ini mengaktifkan deteksi perpindahan tab.</li>
+                    <li v-if="exam.require_fullscreen">🖥 Ujian ini WAJIB dikerjakan dalam layar penuh. Keluar dari layar penuh tercatat sebagai pelanggaran.</li>
                     <li>⏳ Setelah waktu habis, jawaban dikumpulkan otomatis.</li>
                 </ul>
                 <form :action="route('student.exam.start', exam.id)" method="post">
@@ -553,6 +642,7 @@ onBeforeUnmount(() => {
                     <button
                         type="submit"
                         class="flex h-14 w-full items-center justify-center rounded-xl bg-brand-600 text-lg font-bold text-white"
+                        @click="exam.require_fullscreen ? enterFullscreen(true) : null"
                     >
                         Mulai Ujian
                     </button>
@@ -857,33 +947,67 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
+            <!-- Banner bila perangkat tidak mendukung fullscreen (ujian tetap jalan) -->
+            <div
+                v-if="fsNotice && !fullscreenBlocked"
+                class="fixed inset-x-0 top-0 z-[60] bg-warning-50 px-4 py-2 text-center text-xs font-semibold text-warning-800 ring-1 ring-warning-200"
+            >
+                {{ fsNotice }}
+            </div>
+
+            <!-- Kunci layar penuh: menutup seluruh layar saat siswa keluar fullscreen -->
+            <div v-if="fullscreenBlocked" class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/95 p-4">
+                <div class="w-full max-w-sm rounded-2xl bg-white p-8 text-center">
+                    <div class="mb-4 text-5xl">⛶</div>
+                    <h3 class="mb-2 text-lg font-bold text-slate-900">Layar Penuh Wajib</h3>
+                    <p class="mb-2 text-sm text-slate-600">
+                        Ujian ini harus dikerjakan dalam layar penuh. Anda terdeteksi keluar dari
+                        layar penuh dan kejadian ini <strong>tercatat sebagai pelanggaran anti-cheat</strong>.
+                    </p>
+                    <p class="mb-5 text-sm text-slate-500">Timer tetap berjalan. Tekan tombol di bawah untuk melanjutkan.</p>
+                    <button
+                        class="h-14 w-full rounded-xl bg-brand-600 text-lg font-bold text-white"
+                        @click="enterFullscreen(true)"
+                    >
+                        Masuk Layar Penuh
+                    </button>
+                </div>
+            </div>
+
             <!-- Modal submit -->
             <div v-if="showSubmitModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
                 <div class="w-full max-w-sm rounded-2xl bg-white p-6">
-                    <h3 class="mb-3 text-lg font-bold text-slate-900">Kumpulkan Jawaban?</h3>
+                    <div class="mb-3 text-4xl">🏁</div>
+                    <h3 class="mb-2 text-lg font-bold text-slate-900">Kumpulkan Jawaban?</h3>
                     <p class="mb-2 text-sm text-slate-600">
                         Anda telah menjawab <strong>{{ answeredCount }}</strong> dari
                         <strong>{{ totalQuestions }}</strong> soal.
                     </p>
-                    <p v-if="unansweredCount > 0" class="mb-4 text-sm text-warning-700">
-                        Masih ada <strong>{{ unansweredCount }}</strong> soal belum dijawab.
+                    <p v-if="unansweredCount > 0" class="mb-3 text-sm text-warning-700">
+                        Masih ada <strong>{{ unansweredCount }}</strong> soal belum dijawab dan akan dinilai kosong.
                     </p>
-                    <p v-else class="mb-4 text-sm text-success-700">
-                        Semua soal sudah dijawab. Siap dikumpulkan.
-                    </p>
+                    <div class="mb-4 rounded-xl bg-danger-50 p-3 text-sm font-semibold text-danger-700 ring-1 ring-danger-200">
+                        ⚠️ Setelah dikumpulkan, UJIAN BERAKHIR. Jawaban tidak dapat diubah lagi dan ujian tidak dapat diulang.
+                    </div>
+
+                    <label class="mb-4 flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-700 ring-1 ring-slate-200">
+                        <input v-model="submitConfirmed" type="checkbox" class="mt-0.5 h-5 w-5 shrink-0" />
+                        <span>Saya paham bahwa menekan <b>Kumpulkan</b> mengakhiri ujian ini secara permanen.</span>
+                    </label>
 
                     <div class="flex gap-2">
                         <button
                             class="h-12 flex-1 rounded-xl bg-slate-100 font-semibold text-slate-700"
                             @click="showSubmitModal = false"
                         >
-                            Batal
+                            Kembali Mengerjakan
                         </button>
                         <button
-                            class="h-12 flex-1 rounded-xl bg-success-600 font-semibold text-white"
+                            class="h-12 flex-1 rounded-xl bg-success-600 font-semibold text-white disabled:opacity-40"
+                            :disabled="!submitConfirmed"
                             @click="doSubmit"
                         >
-                            Ya, Kumpulkan
+                            Kumpulkan &amp; Akhiri Ujian
                         </button>
                     </div>
                 </div>

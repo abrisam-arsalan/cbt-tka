@@ -33,6 +33,7 @@ const form = useForm({
     end_at: props.exam?.end_at ? toLocalInput(props.exam.end_at) : '',
     anti_cheat_enabled: props.exam?.anti_cheat_enabled ?? false,
     anti_cheat_max_warnings: props.exam?.anti_cheat_max_warnings ?? 3,
+    require_fullscreen: props.exam?.require_fullscreen ?? false,
     anti_cheat_action: props.exam?.anti_cheat_action ?? 'log_only',
     shuffle_questions: props.exam?.shuffle_questions ?? false,
     shuffle_options: props.exam?.shuffle_options ?? false,
@@ -207,6 +208,19 @@ const submit = () => {
                                 <input v-model.number="form.anti_cheat_max_warnings" type="number" min="0" max="10" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" />
                             </div>
                         </div>
+                    </div>
+
+                    <div>
+                        <label class="flex items-center gap-2 font-semibold text-slate-800">
+                            <input v-model="form.require_fullscreen" type="checkbox" class="h-4 w-4" />
+                            Wajib Layar Penuh (Fullscreen)
+                        </label>
+                        <p class="mt-1 text-xs text-slate-500">
+                            Siswa otomatis masuk layar penuh saat mengerjakan. Keluar fullscreen
+                            (tombol Esc, floating window / split-screen Android, ganti aplikasi)
+                            tercatat sebagai pelanggaran anti-cheat dan layar dikunci sampai kembali.
+                            Aktifkan bersama Anti-Cheat agar peringatan otomatis tersimpan.
+                        </p>
                     </div>
 
                     <label class="flex items-center gap-2 text-sm font-medium text-slate-700">

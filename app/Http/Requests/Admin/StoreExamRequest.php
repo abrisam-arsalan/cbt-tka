@@ -36,6 +36,7 @@ class StoreExamRequest extends FormRequest
             'start_at' => ['nullable', 'date'],
             'end_at' => ['nullable', 'date', 'after:start_at'],
             'anti_cheat_enabled' => [$isUpdate ? 'sometimes' : 'nullable', 'boolean'],
+            'require_fullscreen' => [$isUpdate ? 'sometimes' : 'nullable', 'boolean'],
             'anti_cheat_max_warnings' => [$isUpdate ? 'sometimes' : 'nullable', 'integer', 'min:0', 'max:10'],
             'anti_cheat_action' => [$isUpdate ? 'sometimes' : 'nullable', Rule::in(AntiCheatAction::values())],
             'shuffle_questions' => [$isUpdate ? 'sometimes' : 'nullable', 'boolean'],

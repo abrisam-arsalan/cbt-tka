@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
 
 #[Fillable([
     'title', 'description', 'class_id', 'grade', 'duration_minutes', 'question_count', 'start_at', 'end_at', 'status', 'paused_at',
-    'anti_cheat_enabled', 'anti_cheat_max_warnings', 'anti_cheat_action',
+    'anti_cheat_enabled', 'anti_cheat_max_warnings', 'anti_cheat_action', 'require_fullscreen',
     'shuffle_questions', 'shuffle_options', 'offline_grace_minutes', 'created_by',
 ])]
 class Exam extends Model
@@ -32,6 +32,7 @@ class Exam extends Model
             'anti_cheat_enabled' => 'boolean',
             'anti_cheat_max_warnings' => 'integer',
             'anti_cheat_action' => AntiCheatAction::class,
+            'require_fullscreen' => 'boolean',
             'shuffle_questions' => 'boolean',
             'shuffle_options' => 'boolean',
             'duration_minutes' => 'integer',

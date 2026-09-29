@@ -246,6 +246,7 @@ class ExamController extends Controller
             'anti_cheat_enabled' => (bool) $exam->anti_cheat_enabled,
             'anti_cheat_action' => $exam->anti_cheat_action?->value,
             'anti_cheat_max_warnings' => (int) $exam->maxWarnings(),
+            'require_fullscreen' => (bool) $exam->require_fullscreen,
             'shuffle_questions' => (bool) $exam->shuffle_questions,
             'shuffle_options' => (bool) $exam->shuffle_options,
             'offline_grace_minutes' => (int) $exam->graceMinutes(),

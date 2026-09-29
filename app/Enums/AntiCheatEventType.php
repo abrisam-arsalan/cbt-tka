@@ -29,6 +29,12 @@ enum AntiCheatEventType: string
     /** Catatan manual dari admin (mis. hasil reset warning). */
     case AdminAction = 'admin_action';
 
+    /** Siswa keluar layar penuh (Esc, floating window / split-screen Android). */
+    case FullscreenExit = 'fullscreen_exit';
+
+    /** Siswa kembali ke layar penuh setelah peringatan. */
+    case FullscreenEnter = 'fullscreen_enter';
+
     public function label(): string
     {
         return match ($this) {
@@ -38,6 +44,8 @@ enum AntiCheatEventType: string
             self::LimitExceeded => 'Batas peringatan terlampaui',
             self::ActionTaken => 'Sanksi diterapkan',
             self::AdminAction => 'Tindakan admin',
+            self::FullscreenExit => 'Keluar layar penuh',
+            self::FullscreenEnter => 'Kembali ke layar penuh',
         };
     }
 
@@ -50,6 +58,8 @@ enum AntiCheatEventType: string
      */
     public function incrementsWarning(): bool
     {
-        return $this === self::VisibilityHidden || $this === self::WindowBlur;
+        return $this === self::VisibilityHidden
+            || $this === self::WindowBlur
+            || $this === self::FullscreenExit;
     }
 }

@@ -120,6 +120,8 @@ Route::middleware(['auth', 'role:admin', 'throttle:admin'])->group(function () {
         ->name('exams.monitoring.reset-warnings');
     Route::post('exams/{exam}/monitoring/{attempt}/submit-paksa', [MonitoringController::class, 'forceSubmit'])
         ->name('exams.monitoring.force-submit');
+    Route::post('exams/{exam}/monitoring/{attempt}/reset', [MonitoringController::class, 'resetExam'])
+        ->name('exams.monitoring.reset');
 
     // Log anti-cheat
     Route::get('anti-cheat', [AntiCheatLogController::class, 'index'])->name('anti-cheat.index');

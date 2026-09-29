@@ -455,6 +455,39 @@ class ExamTimerService
         return $result;
     }
 
+    /**
+     * Reset ujian untuk satu peserta (force majeure, mis. tidak sengaja
+     * menekan Kumpulkan). Attempt beserta jawaban & log-nya dihapus
+     * (cascade), kepesertaan tetap — siswa bisa mengerjakan dari awal lagi
+     * selama jendela ujian masih terbuka.
+     */
+    public function resetAttempt(Attempt $attempt, User $admin): void
+    {
+        DB::transaction(function () use ($attempt, $admin) {
+            $locked = Attempt::query()->whereKey($attempt->id)->lockForUpdate()->firstOrFail();
+
+            $info = [
+                'attempt_id' => (int) $locked->id,
+                'exam_id' => (int) $locked->exam_id,
+                'user_id' => (int) $locked->user_id,
+                'status' => $locked->status->value,
+                'warnings' => (int) $locked->warnings_count,
+                'answers' => $locked->answers()->count(),
+            ];
+
+            // answers / anti_cheat_logs / presence_heartbeats ikut terhapus
+            // melalui cascadeOnDelete di migrasi masing-masing.
+            $locked->delete();
+
+            $this->audit->log(
+                action: 'attempt.reset',
+                subject: $attempt,
+                description: 'Attempt direset admin (force majeure). Siswa dapat mengulang ujian.',
+                meta: $info,
+            );
+        });
+    }
+
     // ------------------------------------------------------------------
     // Internal
     // ------------------------------------------------------------------

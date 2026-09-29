@@ -45,6 +45,14 @@ const statusClass = (status) => ({
 }[status] || 'bg-slate-100 text-slate-600');
 
 const post = (name, attemptId) => router.post(route(name, { exam: props.exam.id, attempt: attemptId }));
+
+// Force majeure (mis. tidak sengaja klik Kumpulkan): hapus attempt + jawaban
+// agar siswa bisa mengerjakan ulang. Butuh konfirmasi karena permanen.
+const resetExam = (row) => {
+    if (!row.attempt_id) return;
+    if (!confirm(`Reset ujian ${row.name}?\n\nSemua jawabannya terhapus dan siswa dapat mengerjakan ulang dari awal. Tindakan ini permanen.`)) return;
+    router.post(route('admin.exams.monitoring.reset', { exam: props.exam.id, attempt: row.attempt_id }));
+};
 </script>
 
 <template>
@@ -151,6 +159,14 @@ const post = (name, attemptId) => router.post(route(name, { exam: props.exam.id,
                                     <button class="rounded px-2 py-1.5 text-left text-xs hover:bg-slate-50" @click="post('admin.exams.monitoring.unlock', row.attempt_id)">Buka Kunci</button>
                                     <button class="rounded px-2 py-1.5 text-left text-xs hover:bg-slate-50" @click="post('admin.exams.monitoring.reset-warnings', row.attempt_id)">Reset Warning</button>
                                     <button class="rounded px-2 py-1.5 text-left text-xs text-danger-600 hover:bg-danger-50" @click="post('admin.exams.monitoring.force-submit', row.attempt_id)">Submit Paksa</button>
+                                    <button
+                                        v-if="row.attempt_id"
+                                        class="rounded px-2 py-1.5 text-left text-xs text-danger-700 hover:bg-danger-50 border-t border-slate-100"
+                                        title="Force majeure: hapus attempt & jawaban, siswa bisa mengulang"
+                                        @click="resetExam(row)"
+                                    >
+                                        Reset Ujian
+                                    </button>
                                 </div>
                             </details>
                         </td>

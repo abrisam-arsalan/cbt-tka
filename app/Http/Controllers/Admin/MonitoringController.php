@@ -82,4 +82,20 @@ class MonitoringController extends Controller
 
         return back()->with('success', 'Attempt disubmit paksa.');
     }
+
+    /**
+     * Reset ujian satu peserta (force majeure — mis. tidak sengaja klik
+     * Kumpulkan). Jawaban & attempt terhapus; siswa menjadi "belum ikut"
+     * dan bisa mengerjakan ulang selama ujian masih terbuka.
+     */
+    public function resetExam(Exam $exam, Attempt $attempt, Request $request): RedirectResponse
+    {
+        if ($attempt->exam_id !== $exam->id) {
+            abort(404);
+        }
+
+        $this->timer->resetAttempt($attempt, $request->user());
+
+        return back()->with('success', 'Ujian peserta direset. Yang bersangkutan dapat mengerjakan dari awal.');
+    }
 }
