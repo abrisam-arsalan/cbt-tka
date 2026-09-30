@@ -26,7 +26,7 @@ class MonitoringController extends Controller
         $rows = $this->presence->monitoringRows($exam);
         $summary = $this->presence->summarize($rows);
 
-        // Token sesi aktif — diberitahukan pengawas ke siswa di ruang ujian.
+        // Token ujian (menetap) — diberitahukan pengawas ke siswa di ruang ujian.
         $session = $this->tokens->current($exam);
 
         return Inertia::render('Admin/Monitoring/Index', [

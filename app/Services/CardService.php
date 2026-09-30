@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\URL;
  * Kartu ujian.
  *
  * Kartu hanya memuat AKUN LOGIN siswa: username (NISN) + PIN, plus URL
- * login. Token TIDAK dicetak lagi per siswa — kini satu token sesi per
- * ujian yang berganti otomatis tiap 30 menit dan diumumkan pengawas dari
+ * login. Token TIDAK dicetak lagi per siswa — kini satu token menetap per
+ * ujian (berlaku selama ujian berlangsung) yang diumumkan pengawas dari
  * halaman Monitoring (lihat ExamSessionTokenService).
  */
 class CardService
@@ -117,7 +117,7 @@ class CardService
     {
         $rules = [
             'Bawa kartu ini saat ujian berlangsung. Login memakai Username + PIN pada kartu.',
-            'Token ujian diumumkan pengawas di ruang ujian dan berganti setiap 30 menit.',
+            'Token ujian diumumkan pengawas di ruang ujian; satu token berlaku selama ujian berlangsung.',
             'Masuk ke ruang ujian minimal 10 menit sebelum jadwal mulai.',
             'Pastikan perangkat terisi penuh atau terhubung charger.',
             'Tidak diperkenankan membuka tab atau aplikasi lain selama ujian.',

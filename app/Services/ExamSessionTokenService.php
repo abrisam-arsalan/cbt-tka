@@ -5,99 +5,83 @@ namespace App\Services;
 use App\Models\Exam;
 
 /**
- * Token SESI ujian: satu token untuk seluruh peserta SATU ujian, yang
- * berganti otomatis setiap 30 menit mengikuti jam dinding (window :00 dan
- * :30). Admin/pengawas melihat token aktif di halaman Monitoring dan
- * mengumumkannya; siswa memasukkannya saat akan mulai ujian.
+ * Token ujian: SATU token tetap per ujian, berlaku selama ujian berlangsung.
  *
- * Rotasi bersifat lazy: token window baru dibuat saat pertama kali diminta
- * (dibuka di monitoring atau diverifikasi saat join) pada window berjalan.
- * Karena window ditentukan waktu dinding — bukan waktu pembuatan — semua
- * server/perangkat otomatis sepakat kapan token berganti.
+ * Pengawas melihat token di halaman Monitoring dan mengumumkannya; siswa
+ * memasukkannya saat akan mulai (join). Token TIDAK lagi berganti tiap
+ * 30 menit — dulu berbasis waktu, kini berbasis ujian, karena rotasi waktu
+ * membuat sebagian siswa "gagal memasukkan token padahal sudah benar"
+ * (token diumumkan window lama, diverifikasi saat window baru).
+ *
+ * Token dibuat sekali (lazy) lalu disimpan sebagai hash (verifikasi) dan
+ * cipher (dipakai untuk ditampilkan lagi). Token lama hasil upgrade/rotasi
+ * manual masih diterima satu langkah ke belakang (previous_token_hash) agar
+ * siswa yang sedang mengetik tidak tertolak saat perpindahan skema.
  */
 class ExamSessionTokenService
 {
-    public const WINDOW_SECONDS = 1800; // 30 menit
+    /** Nilai penanda "token menetap" pada kolom session_window. */
+    public const FIXED_WINDOW = 0;
 
     /**
-     * Token aktif untuk ujian, digenerate ulang bila window sudah berganti.
+     * Token aktif untuk ujian — dibuat sekali, tidak pernah berganti sendiri.
      *
-     * @return array{token: string, expires_at: string, window: int}
+     * @return array{token: string, expires_at: null, window: int}
      */
     public function current(Exam $exam): array
     {
-        $window = $this->window();
-
-        if ((int) $exam->session_window !== $window || $exam->session_token_cipher === null) {
-            $this->rotate($exam, $window);
+        if ($exam->session_token_cipher === null || (int) $exam->session_window !== self::FIXED_WINDOW) {
+            $this->rotate($exam);
         }
 
         return [
             'token' => (string) $exam->session_token_cipher, // cast 'encrypted' mendekrip
-            'expires_at' => $this->windowEnd($window)->toIso8601String(),
-            'window' => $window,
+            'expires_at' => null, // tidak ada kedaluwarsa waktu
+            'window' => self::FIXED_WINDOW,
         ];
     }
 
     /**
-     * Cocokkan token yang dimasukkan siswa dengan token window SAAT ini
-     * dan window sebelumnya (toleransi 30 menit agar siswa yang sedang
-     * mengetik saat token berganti tidak gagal).
+     * Cocokkan token yang dimasukkan siswa dengan token ujian (plus token
+     * sebelumnya untuk masa transisi, lihat catatan kelas).
      */
     public function verify(Exam $exam, string $input): bool
     {
         $normalized = TokenGenerator::fromConfig()->normalize($input);
-        $hash = hash('sha256', $normalized);
 
-        if ($hash === '') {
+        if ($normalized === '') {
             return false;
         }
 
-        $current = $this->current($exam);
+        $hash = hash('sha256', $normalized);
 
-        if ($hash === $exam->session_token_hash) {
+        // Pastikan token sudah terbentuk (exam baru, belum pernah dibuka di monitoring).
+        $this->current($exam);
+
+        if (hash_equals((string) $exam->session_token_hash, $hash)) {
             return true;
         }
 
-        // Window sebelumnya: token lama masih diterima sampai 30 menit setelah
-        // berganti (grace), selama exam belum pernah di-rotate manual.
-        $previousWindow = $this->window() - 1;
-
         return $exam->previous_token_hash !== null
-            && (int) $exam->previous_token_window === $previousWindow
             && hash_equals($exam->previous_token_hash, $hash);
     }
 
     /**
-     * Paksa rotasi sekarang (dipakai saat rotate lazy maupun manual).
+     * Ganti token secara manual (mis. token bocor/tersebar). Token yang
+     * digantikan tetap diterima sampai rotasi berikutnya — transisi aman.
      */
-    public function rotate(Exam $exam, ?int $window = null): string
+    public function rotate(Exam $exam): string
     {
-        $window ??= $this->window();
         $raw = TokenGenerator::fromConfig()->generateRaw();
-
-        // Simpan hash token lama sebagai grace window berikutnya.
-        $previousHash = $exam->session_token_hash;
-        $previousWindow = $exam->session_window;
 
         $exam->forceFill([
             'session_token_hash' => hash('sha256', $raw),
             'session_token_cipher' => TokenGenerator::fromConfig()->format($raw),
-            'session_window' => $window,
-            'previous_token_hash' => $previousHash,
-            'previous_token_window' => $previousWindow,
+            'session_window' => self::FIXED_WINDOW,
+            'previous_token_hash' => $exam->session_token_hash,
+            'previous_token_window' => $exam->session_window,
         ])->save();
 
         return (string) $exam->session_token_cipher;
-    }
-
-    private function window(): int
-    {
-        return intdiv(now()->timestamp, self::WINDOW_SECONDS);
-    }
-
-    private function windowEnd(int $window): \Illuminate\Support\Carbon
-    {
-        return now()->setTimestamp(($window + 1) * self::WINDOW_SECONDS)->startOfMinute();
     }
 }

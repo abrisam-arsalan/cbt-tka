@@ -33,6 +33,10 @@ class HeartbeatController extends Controller
             'driver' => $presence->driverName(),
             'remaining_seconds' => $attempt->remainingSeconds(),
             'server_time' => now()->getTimestampMs(),
+            // Safety net: bila siswa sudah terlanjur submit di server tapi
+            // navigasi browsernya gagal, halaman ujian bisa redirect lewat
+            // heartbeat alih-alih menggantung dengan tombol nonaktif.
+            'attempt_status' => $attempt->status->value,
         ]);
     }
 }

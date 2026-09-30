@@ -46,11 +46,11 @@ class JoinController extends Controller
             ]);
         }
 
-        // Token sesi (satu untuk semua peserta, berganti tiap 30 menit)
+        // Token ujian (satu tetap per ujian, berlaku selama ujian berlangsung)
         // diumumkan pengawas dari halaman Monitoring.
         if (! $tokens->verify($exam, (string) $request->input('token'))) {
             return back()->withErrors([
-                'token' => 'Token salah atau sudah kedaluwarsa (berganti tiap 30 menit). Minta token terbaru ke pengawas.',
+                'token' => 'Token tidak dikenali. Periksa kembali ejaannya (tanda hubung/spasi/huruf kecil tidak masalah) atau tanya pengawas.',
             ]);
         }
 

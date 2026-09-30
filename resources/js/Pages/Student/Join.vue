@@ -62,9 +62,9 @@ const submit = () => form.post(route('student.exam.join.attempt', props.exam.id)
             <div class="mt-4 rounded-xl bg-brand-50 p-4 text-[13px] text-brand-800">
                 <p class="mb-1 font-semibold">Petunjuk:</p>
                 <ul class="list-inside list-disc space-y-0.5">
-                    <li>Token sesi sama untuk semua peserta dan berganti otomatis tiap 30 menit.</li>
-                    <li>Minta token terbaru ke pengawas bila token di layar sudah kedaluwarsa.</li>
-                    <li>Tanda hubung (-) boleh diabaikan.</li>
+                    <li>Token sama untuk semua peserta dan <b>berlaku selama ujian berlangsung</b> (tidak berganti).</li>
+                    <li>Tanya pengawas bila lupa token — token juga tampil di layar monitoring ruang ujian.</li>
+                    <li>Tanda hubung (-), spasi, dan huruf kecil boleh — token tetap terbaca benar.</li>
                 </ul>
             </div>
         </div>

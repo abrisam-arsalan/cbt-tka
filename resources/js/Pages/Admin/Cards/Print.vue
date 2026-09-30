@@ -50,7 +50,7 @@ onMounted(() => {
 
                 <!-- Akun login: username (NISN) dan PIN dicetak terpisah;
                      PIN angka, username NISN — keduanya berbeda. Token sesi
-                     TIDAK dicetak: diumumkan pengawas, berganti tiap 30 menit. -->
+                     TIDAK dicetak: diumumkan pengawas, berlaku selama ujian. -->
                 <div class="grid grid-cols-2 gap-2">
                     <div class="rounded-lg border border-slate-300 px-3 py-2 text-center">
                         <p class="text-xs text-slate-400">Username (NISN)</p>

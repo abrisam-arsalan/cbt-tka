@@ -99,7 +99,7 @@ const resetExam = (row) => {
                 </div>
             </div>
 
-            <!-- Token sesi: umumkan ke siswa, berganti otomatis tiap 30 menit -->
+            <!-- Token ujian: SATU token tetap per ujian, berlaku selama ujian. Umumkan ke siswa. -->
             <div class="flex flex-wrap gap-2">
                 <div
                     v-for="t in tokensList"
@@ -108,14 +108,11 @@ const resetExam = (row) => {
                     :class="isGlobal ? 'min-w-[15rem] basis-full sm:basis-auto' : ''"
                 >
                     <p class="text-[11px] font-semibold uppercase tracking-wider opacity-80">
-                        Token Sesi<span v-if="t.exam_title"> — {{ t.exam_title }}</span>
+                        Token Ujian<span v-if="t.exam_title"> — {{ t.exam_title }}</span>
                     </p>
                     <div class="flex items-center gap-3">
                         <span class="font-mono text-xl font-bold tracking-widest">{{ t.token }}</span>
-                        <span class="text-xs opacity-90">
-                            s/d
-                            {{ new Date(t.expires_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }}
-                        </span>
+                        <span class="text-xs opacity-90">berlaku selama ujian</span>
                     </div>
                 </div>
                 <p v-if="tokensList.length === 0" class="text-xs text-slate-400">Tidak ada ujian aktif.</p>

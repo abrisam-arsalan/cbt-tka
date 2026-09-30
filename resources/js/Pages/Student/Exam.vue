@@ -283,7 +283,7 @@ async function sendHeartbeat() {
     };
 
     try {
-        await fetch(route('student.exam.heartbeat', props.exam.id), {
+        const res = await fetch(route('student.exam.heartbeat', props.exam.id), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -292,6 +292,11 @@ async function sendHeartbeat() {
             },
             body: JSON.stringify(body),
         });
+
+        // Server sudah mencatat submit (mis. waktu habis / pengumpulan yang
+        // navigasinya gagal) → arahkan siswa ke hasil lewat jalur heartbeat.
+        const data = await res.json();
+        if (data.attempt_status === 'submitted') redirectToResult();
 
         if (navigator.onLine && outbox.value.length > 0) scheduleFlush(500);
     } catch {
@@ -308,7 +313,9 @@ const deadlineEpoch = props.attempt ? serverTime.value + props.attempt.remaining
 
 const nowMs = ref(Date.now());
 let clockTimer = null;
-let submitted = false;
+let submitted = false; // cegah POST submit ganda
+let navigated = false;  // cegah navigasi ganda — terpisah dari submitted!
+const submitting = ref(false);
 
 const remainingSeconds = computed(() => Math.max(0, Math.floor((deadlineEpoch - (nowMs.value + clockOffset)) / 1000)));
 const timerCritical = computed(() => remainingSeconds.value <= 60 && remainingSeconds.value > 0);
@@ -327,7 +334,8 @@ function autoSubmitIfExpired() {
     if (remainingSeconds.value > 0) return;
     submitted = true;
     showSubmitModal.value = false;
-    router.post(route('student.exam.submit', props.exam.id));
+    submitting.value = true;
+    postSubmit();
 }
 
 // ------------------------------------------------------------------
@@ -483,6 +491,7 @@ const openSubmitModal = () => {
 // Klik "Kumpulkan": beri peringatan dulu bila masih ada soal ditandai
 // ragu-ragu, supaya siswa meninjau & melepas centangnya.
 const requestSubmit = () => {
+    if (submitting.value) return;
     if (flaggedQuestions.value.length > 0) {
         showFlagModal.value = true;
         return;
@@ -499,6 +508,7 @@ async function doSubmit() {
     if (submitted) return;
     submitted = true;
     showSubmitModal.value = false;
+    submitting.value = true;
 
     try {
         await flushOutbox();
@@ -506,12 +516,33 @@ async function doSubmit() {
         // Tetap submit; outbox masih bisa masuk via grace period.
     }
 
-    router.post(route('student.exam.submit', props.exam.id));
+    postSubmit();
+}
+
+// POST submit + JARING PENGAMAN. Pernah terjadi: server sudah mencatat
+// submit (monitoring hijau) tetapi navigasi Inertia hilang di jaringan
+// sekolah yang lambat — siswa terjebak dengan tombol nonaktif. Kalau
+// 10 detik kemudian masih di layar ujian, paksakan buka halaman hasil;
+// heartbeat juga mendeteksi status submitted dari server (± tiap 20 dtk).
+function postSubmit() {
+    router.post(route('student.exam.submit', props.exam.id), {}, {
+        onSuccess: () => { navigated = true; },
+        onError: () => { submitting.value = false; },
+    });
+
+    setTimeout(() => {
+        if (!navigated) redirectToResult();
+    }, 10000);
 }
 
 function redirectToResult() {
-    if (submitted || !props.attempt) return;
+    // Flag "navigated" (bukan "submitted") yang menjaga fungsi ini —
+    // doSubmit sudah men-set submitted=true SEBELUM fallback sempat jalan,
+    // sehingga guard lama membuat semua jalur pengaman jadi no-op.
+    if (navigated || !props.attempt) return;
+    navigated = true;
     submitted = true;
+    submitting.value = false;
     router.visit(route('student.history.show', props.attempt.id));
 }
 
@@ -677,10 +708,11 @@ onBeforeUnmount(() => {
                                 Daftar<span class="hidden sm:inline"> Soal</span>
                             </button>
                             <button
-                                class="rounded-lg bg-danger-500 px-3 py-1.5 text-sm font-semibold text-white"
+                                class="rounded-lg px-3 py-1.5 text-sm font-semibold text-white"
+                                :class="submitting ? 'bg-slate-400' : 'bg-danger-500'"
                                 @click="requestSubmit"
                             >
-                                Kumpulkan
+                                {{ submitting ? 'Mengumpulkan…' : 'Kumpulkan' }}
                             </button>
                         </div>
 
@@ -884,10 +916,11 @@ onBeforeUnmount(() => {
                     </button>
                     <button
                         v-else
-                        class="h-12 rounded-xl bg-success-600 font-semibold text-white px-5 sm:px-6"
+                        class="h-12 rounded-xl font-semibold text-white px-5 sm:px-6"
+                        :class="submitting ? 'bg-slate-400' : 'bg-success-600'"
                         @click="requestSubmit"
                     >
-                        Selesai ✓
+                        {{ submitting ? 'Mengumpulkan…' : 'Selesai ✓' }}
                     </button>
                 </div>
             </nav>
@@ -953,6 +986,15 @@ onBeforeUnmount(() => {
                 class="fixed inset-x-0 top-0 z-[60] bg-warning-50 px-4 py-2 text-center text-xs font-semibold text-warning-800 ring-1 ring-warning-200"
             >
                 {{ fsNotice }}
+            </div>
+
+            <!-- Pengumpulan sedang berjalan: feedback jelas, bukan tombol mati -->
+            <div v-if="submitting" class="fixed inset-0 z-[66] flex items-center justify-center bg-slate-900/60 p-4">
+                <div class="w-full max-w-xs rounded-2xl bg-white p-6 text-center shadow-lg">
+                    <div class="mb-3 text-4xl">⏳</div>
+                    <p class="text-sm font-semibold text-slate-800">Mengumpulkan jawaban…</p>
+                    <p class="mt-1 text-xs text-slate-500">Mohon tunggu, jangan tutup halaman ini.</p>
+                </div>
             </div>
 
             <!-- Kunci layar penuh: menutup seluruh layar saat siswa keluar fullscreen -->
