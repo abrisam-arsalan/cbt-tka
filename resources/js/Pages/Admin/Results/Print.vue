@@ -14,6 +14,9 @@ const props = defineProps({
 // Kolom Ujian disembunyikan bila hasil sudah difilter per ujian.
 const showExamColumn = !props.exam_title;
 
+// Peserta terdaftar yang mengumpulkan jawaban (baris 'belum mengikuti' tak dihitung).
+const finishedCount = props.rows.filter((r) => r.participated).length;
+
 onMounted(() => {
     // Otomatis buka dialog cetak browser (=> printer atau "Simpan sebagai PDF").
     setTimeout(() => window.print(), 500);
@@ -55,7 +58,7 @@ const today = () => new Date().toLocaleDateString('id-ID', { day: '2-digit', mon
         </div>
 
         <p class="mb-2 text-xs text-slate-500">
-            Dicetak: {{ today() }} · Jumlah peserta selesai: {{ rows.length }}
+            Dicetak: {{ today() }} · Terdaftar: {{ rows.length }} · Selesai: {{ finishedCount }} · Belum mengikuti: {{ rows.length - finishedCount }}
         </p>
 
         <table class="w-full border-collapse text-sm">
@@ -69,6 +72,7 @@ const today = () => new Date().toLocaleDateString('id-ID', { day: '2-digit', mon
                     <th class="border border-slate-400 px-2 py-1.5 text-center">Nilai</th>
                     <th class="border border-slate-400 px-2 py-1.5 text-center">B/S/K</th>
                     <th class="border border-slate-400 px-2 py-1.5">Dikumpulkan</th>
+                    <th class="border border-slate-400 px-2 py-1.5">Keterangan</th>
                 </tr>
             </thead>
             <tbody>
@@ -78,12 +82,18 @@ const today = () => new Date().toLocaleDateString('id-ID', { day: '2-digit', mon
                     <td class="border border-slate-400 px-2 py-1">{{ row.username ?? '-' }}</td>
                     <td class="border border-slate-400 px-2 py-1">{{ row.class_name }}</td>
                     <td v-if="showExamColumn" class="border border-slate-400 px-2 py-1">{{ row.exam_title }}</td>
-                    <td class="border border-slate-400 px-2 py-1 text-center font-bold">{{ row.score ?? '-' }}</td>
-                    <td class="border border-slate-400 px-2 py-1 text-center">{{ row.correct_count }}/{{ row.wrong_count }}/{{ row.unanswered_count }}</td>
-                    <td class="border border-slate-400 px-2 py-1 text-xs">{{ formatDate(row.submitted_at) }}</td>
+                    <td class="border border-slate-400 px-2 py-1 text-center font-bold">{{ row.participated ? (row.score ?? '-') : '-' }}</td>
+                    <td class="border border-slate-400 px-2 py-1 text-center">
+                        <template v-if="row.participated">{{ row.correct_count }}/{{ row.wrong_count }}/{{ row.unanswered_count }}</template>
+                        <template v-else>-</template>
+                    </td>
+                    <td class="border border-slate-400 px-2 py-1 text-xs">{{ row.submitted_at ? formatDate(row.submitted_at) : '-' }}</td>
+                    <td class="border border-slate-400 px-2 py-1 text-xs">
+                        {{ row.participated ? (row.submit_reason_label ?? '') : (row.note ?? 'Belum mengikuti ujian') }}
+                    </td>
                 </tr>
                 <tr v-if="rows.length === 0">
-                    <td :colspan="showExamColumn ? 8 : 7" class="border border-slate-400 px-2 py-4 text-center text-slate-500">Tidak ada data pada filter ini.</td>
+                    <td :colspan="showExamColumn ? 9 : 8" class="border border-slate-400 px-2 py-4 text-center text-slate-500">Tidak ada data pada filter ini.</td>
                 </tr>
             </tbody>
         </table>

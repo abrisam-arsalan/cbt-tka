@@ -48,6 +48,10 @@ class ResultsExportTest extends TestCase
             'shuffle_seed' => 1,
         ]);
 
+        // Sejak hasil per-ujian berbasis ROSTER PESERTA, siswa harus terdaftar
+        // sebagai peserta agar attempt-nya muncul di daftar hasil/cetak/unduh.
+        $exam->participants()->create(['user_id' => $student->id, 'is_active' => true]);
+
         return [$admin, $exam, $class];
     }
 

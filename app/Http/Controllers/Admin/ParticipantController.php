@@ -30,11 +30,19 @@ class ParticipantController extends Controller
 
         $participantIds = $participants->pluck('user_id')->all();
 
+        // Ujian yang ditargetkan ke jenjang/rombel TERKUNCI: hanya siswa dari
+        // target itu yang bisa ditambahkan — kelas lain tidak muncul di daftar.
+        $targetQuery = fn ($q) => $q
+            ->when($exam->class_id !== null, fn ($w) => $w->where('class_id', (int) $exam->class_id))
+            ->when($exam->class_id === null && $exam->grade !== null && $exam->grade !== '', fn ($w) => $w
+                ->whereHas('schoolClass', fn ($c) => $c->where('grade', (int) $exam->grade)));
+
         $availableUsers = User::query()
             ->siswa()
             ->active()
             ->whereNotIn('id', $participantIds)
             ->with('schoolClass')
+            ->tap($targetQuery)
             ->orderBy('name')
             ->get();
 
@@ -53,16 +61,18 @@ class ParticipantController extends Controller
             ->ordered()
             ->withCount('students')
             ->get()
+            ->filter(fn (SchoolClass $class) => $exam->classMatchesTarget($class))
             ->map(fn (SchoolClass $class) => [
                 'id' => $class->id,
                 'name' => $class->name,
                 'students_count' => (int) $class->students_count,
                 'unregistered_count' => (int) ($unregisteredPerClass[$class->id] ?? 0),
-            ]);
+            ])
+            ->values();
 
         return Inertia::render('Admin/Participants/Index', [
             'title' => 'Peserta: '.$exam->title,
-            'exam' => $exam->only(['id', 'title', 'status']),
+            'exam' => $exam->only(['id', 'title', 'status']) + ['target_label' => $exam->targetLabel()],
             'classes' => $classes,
             'participants' => $participants->map(fn (ExamParticipant $p) => [
                 'id' => $p->id,
@@ -93,6 +103,15 @@ class ParticipantController extends Controller
             'user_id.exists' => 'User tidak ditemukan atau bukan siswa.',
         ]);
 
+        $student = User::query()->with('schoolClass')->find($validated['user_id']);
+
+        // Kunci target: ujian jenjang 9 menolak siswa 7/8 — walau hanya 1 orang.
+        if ($student === null || ! $exam->accessibleToUser($student)) {
+            return back()->with('error',
+                'Ujian terkunci untuk target '.$exam->targetLabel()
+                .' — siswa '.($student?->name ?? '?').' ('.($student?->schoolClass?->name ?? 'tanpa kelas').') berada di luar target.');
+        }
+
         $participant = $exam->participants()->create([
             'user_id' => $validated['user_id'],
             'is_active' => true,
@@ -122,6 +141,12 @@ class ParticipantController extends Controller
         ]);
 
         $schoolClass = SchoolClass::findOrFail($validated['class_id']);
+
+        // Kunci target: tidak bisa menambah satu rombel pun dari luar jenjang ujian.
+        if (! $exam->classMatchesTarget($schoolClass)) {
+            return back()->with('error',
+                "Ujian terkunci untuk target {$exam->targetLabel()} — rombel {$schoolClass->name} berada di luar target.");
+        }
 
         $existing = $exam->participants()->pluck('user_id')->all();
 
@@ -164,7 +189,8 @@ class ParticipantController extends Controller
             abort(404);
         }
 
-        $hasAttempt = $participant->attempt()->exists();
+        // Proteksi berdasarkan exam+user (tidak mengandalkan FK relasi).
+        $hasAttempt = $exam->attempts()->where('user_id', $participant->user_id)->exists();
 
         if ($hasAttempt) {
             $participant->update(['is_active' => false]);

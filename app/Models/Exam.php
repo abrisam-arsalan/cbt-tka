@@ -91,6 +91,45 @@ class Exam extends Model
     }
 
     /**
+     * ID seluruh siswa aktif yang termasuk target ujian ini.
+     * Dipakai untuk men-deploy peserta otomatis saat ujian dibuat/diubah.
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    public function targetStudentIds(): \Illuminate\Support\Collection
+    {
+        $query = User::query()->siswa()->active();
+
+        if ($this->class_id !== null) {
+            $query->where('class_id', (int) $this->class_id);
+        } elseif ($this->grade !== null && $this->grade !== '') {
+            $query->whereHas('schoolClass', fn ($c) => $c->where('grade', (int) $this->grade));
+        }
+
+        return $query->pluck('id')->map(fn ($id) => (int) $id);
+    }
+
+    /**
+     * Apakah sebuah rombel boleh menjadi peserta ujian ini (kunci jenjang).
+     */
+    public function classMatchesTarget(?SchoolClass $class): bool
+    {
+        if ($class === null) {
+            return false;
+        }
+
+        if ($this->class_id !== null) {
+            return (int) $class->id === (int) $this->class_id;
+        }
+
+        if ($this->grade !== null && $this->grade !== '') {
+            return (string) $class->grade === (string) $this->grade;
+        }
+
+        return true;
+    }
+
+    /**
      * Label target ujian untuk tampilan admin ("Semua siswa" / "Jenjang 7" / "7A").
      */
     public function targetLabel(): string

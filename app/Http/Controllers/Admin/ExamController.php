@@ -6,8 +6,10 @@ use App\Enums\ExamStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreExamRequest;
 use App\Models\Exam;
+use App\Models\ExamParticipant;
 use App\Models\QuestionBatch;
 use App\Models\SchoolClass;
+use App\Services\AuditLogService;
 use App\Services\ExamTimerService;
 use App\Services\QuestionCopyService;
 use Illuminate\Http\RedirectResponse;
@@ -20,7 +22,59 @@ class ExamController extends Controller
     public function __construct(
         private readonly ExamTimerService $timer,
         private readonly QuestionCopyService $copy,
+        private readonly AuditLogService $audit,
     ) {}
+
+    /**
+     * Deploy peserta otomatis dari target ujian (jenjang/rombel) dan sinkron
+     * bila target berganti. Peserta yang sudah punya attempt tidak pernah
+     * dihapus — hanya peserta "murni" di luar target baru yang dikeluarkan.
+     *
+     * @return array{added: int, removed: int}
+     */
+    private function syncTargetParticipants(Exam $exam): array
+    {
+        $targetIds = $exam->targetStudentIds();
+        $existing = $exam->participants()->pluck('user_id')->map(fn ($id) => (int) $id)->all();
+
+        $toAdd = array_values(array_diff($targetIds->all(), $existing));
+
+        $now = now();
+        foreach (array_chunk($toAdd, 200) as $chunk) {
+            $rows = array_map(fn (int $uid) => [
+                'exam_id' => $exam->id,
+                'user_id' => $uid,
+                'is_active' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ], $chunk);
+
+            ExamParticipant::insert($rows);
+        }
+
+        // Keluarkan peserta di luar target yang belum memulai attempt.
+        // Proteksi lewat user_id (unique exam+user), bukan FK relasi —
+        // attempt lama bisa punya exam_participant_id null.
+        $attemptUserIds = $exam->attempts()->pluck('user_id')->map(fn ($id) => (int) $id)->all();
+
+        $removed = $exam->participants()
+            ->get()
+            ->reject(fn (ExamParticipant $p) => in_array((int) $p->user_id, $attemptUserIds, true))
+            ->reject(fn (ExamParticipant $p) => $exam->accessibleToUser($p->user))
+            ->each->delete()
+            ->count();
+
+        if ($toAdd !== [] || $removed > 0) {
+            $this->audit->log(
+                action: 'exam.participants_synced',
+                subject: $exam,
+                description: 'Peserta disinkronkan dengan target ujian.',
+                meta: ['target' => $exam->targetLabel(), 'added' => count($toAdd), 'removed' => $removed],
+            );
+        }
+
+        return ['added' => count($toAdd), 'removed' => $removed];
+    }
 
     public function index(Request $request): Response
     {
@@ -79,11 +133,14 @@ class ExamController extends Controller
         // Salin soal bank terpilih menjadi soal milik ujian ini.
         $copied = $this->copy->copyBatchesToExam($batchIds, $exam);
 
+        // Peserta terisi otomatis dari target (jenjang/rombel) — tanpa ini,
+        // admin harus menambah massal per rombel satu per satu.
+        ['added' => $deployed] = $this->syncTargetParticipants($exam);
+
         return redirect()
             ->route('admin.exams.show', $exam)
-            ->with('success', $copied > 0
-                ? "Ujian dibuat dengan {$copied} soal dari bank."
-                : 'Ujian berhasil dibuat. Tambahkan soal bila belum memilih bank.');
+            ->with('success', trim("Ujian dibuat dengan {$copied} soal dari bank.").' '
+                .($deployed > 0 ? "{$deployed} peserta ter-deploy otomatis sesuai target." : ''));
     }
 
     public function show(Exam $exam): Response
@@ -143,9 +200,22 @@ class ExamController extends Controller
     {
         $exam->update($request->validated());
 
+        // Target boleh berganti (mis. jenjang 9 -> rombel 9A): peserta ikut
+        // disinkronkan; siswa yang sudah terlanjur ber-attempt tidak disentuh.
+        ['added' => $added, 'removed' => $removed] = $this->syncTargetParticipants($exam);
+
+        $info = [];
+        if ($added > 0) {
+            $info[] = "{$added} peserta ditambahkan otomatis";
+        }
+        if ($removed > 0) {
+            $info[] = "{$removed} peserta di luar target dikeluarkan";
+        }
+
         return redirect()
             ->route('admin.exams.show', $exam)
-            ->with('success', 'Ujian berhasil diperbarui.');
+            ->with('success', 'Ujian berhasil diperbarui.'
+                .($info !== [] ? ' '.implode(', ', $info).'.' : ''));
     }
 
     public function destroy(Exam $exam): RedirectResponse

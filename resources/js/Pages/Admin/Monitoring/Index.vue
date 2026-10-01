@@ -24,12 +24,30 @@ const tokensList = computed(() => {
     return props.session_token ? [{ ...props.session_token, exam_title: props.exam?.title }] : [];
 });
 
-// Filter ujian di mode gabungan (client-side, tidak perlu reload server).
+// Filter client-side (tanpa reload server): ujian, kelas, dan status.
 const selectedExam = ref('');
+const selectedClass = ref('');
+const selectedStatus = ref('');
+
+const classOptions = computed(() =>
+    [...new Set(props.rows.map((r) => r.class_name).filter((c) => c && c !== '-'))].sort(),
+);
+
+// Kelompok status sesuai kebutuhan pengawas: belum login / sedang
+// mengerjakan (termasuk terkunci & kedaluwarsa) / sudah dikumpulkan.
+const STATUS_GROUPS = {
+    belum_login: (r) => r.status === 'belum_login',
+    running: (r) => ['in_progress', 'locked', 'expired'].includes(r.status),
+    submitted: (r) => r.status === 'submitted',
+};
+
 const visibleRows = computed(() =>
-    isGlobal.value && selectedExam.value
-        ? props.rows.filter((r) => String(r.exam_id) === String(selectedExam.value))
-        : props.rows,
+    props.rows.filter((r) => {
+        if (isGlobal.value && selectedExam.value && String(r.exam_id) !== String(selectedExam.value)) return false;
+        if (selectedClass.value && r.class_name !== selectedClass.value) return false;
+        if (selectedStatus.value && !(STATUS_GROUPS[selectedStatus.value] ?? (() => true))(r)) return false;
+        return true;
+    }),
 );
 
 let refreshTimer = null;
@@ -61,6 +79,8 @@ const statusClass = (status) => ({
     locked: 'bg-warning-100 text-warning-700',
     expired: 'bg-slate-200 text-slate-600',
     submitted: 'bg-success-100 text-success-700',
+    // Peserta terdaftar yang belum pernah membuka ujian.
+    belum_login: 'border border-dashed border-slate-300 bg-slate-50 text-slate-400',
 }[status] || 'bg-slate-100 text-slate-600');
 
 // Aksi memakai exam per baris (mode gabungan) — fallback ke props.exam
@@ -91,11 +111,22 @@ const resetExam = (row) => {
                     <span v-else>{{ exam.title }} · presence: {{ presence_driver }}</span>
                 </p>
 
-                <div v-if="isGlobal" class="mt-2">
-                    <select v-model="selectedExam" class="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm">
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                    <select v-if="isGlobal" v-model="selectedExam" class="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm">
                         <option value="">Semua ujian ({{ exam_options.length }})</option>
                         <option v-for="e in exam_options" :key="e.value" :value="e.value">{{ e.label }}</option>
                     </select>
+                    <select v-model="selectedClass" class="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm" title="Filter rombel">
+                        <option value="">Semua kelas</option>
+                        <option v-for="c in classOptions" :key="c" :value="c">{{ c }}</option>
+                    </select>
+                    <select v-model="selectedStatus" class="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm" title="Filter status keikutsertaan">
+                        <option value="">Semua status</option>
+                        <option value="belum_login">Belum login</option>
+                        <option value="running">Sedang mengerjakan</option>
+                        <option value="submitted">Sudah dikumpulkan</option>
+                    </select>
+                    <span class="text-xs text-slate-400">{{ visibleRows.length }} baris</span>
                 </div>
             </div>
 
@@ -120,10 +151,10 @@ const resetExam = (row) => {
         </div>
 
         <!-- Ringkasan -->
-        <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+        <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             <div class="rounded-xl bg-white p-3 text-center shadow-sm">
                 <div class="text-xl font-bold text-slate-700">{{ summary.total }}</div>
-                <div class="text-xs text-slate-500">Total</div>
+                <div class="text-xs text-slate-500">Terdaftar</div>
             </div>
             <div class="rounded-xl bg-white p-3 text-center shadow-sm">
                 <div class="text-xl font-bold text-success-600">{{ summary.online }}</div>
@@ -132,6 +163,10 @@ const resetExam = (row) => {
             <div class="rounded-xl bg-white p-3 text-center shadow-sm">
                 <div class="text-xl font-bold text-slate-500">{{ summary.offline }}</div>
                 <div class="text-xs text-slate-500">Offline</div>
+            </div>
+            <div class="rounded-xl bg-white p-3 text-center shadow-sm">
+                <div class="text-xl font-bold text-slate-400">{{ summary.belum_login ?? 0 }}</div>
+                <div class="text-xs text-slate-500">Belum Login</div>
             </div>
             <div class="rounded-xl bg-white p-3 text-center shadow-sm">
                 <div class="text-xl font-bold text-brand-600">{{ summary.in_progress }}</div>
@@ -162,7 +197,12 @@ const resetExam = (row) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in visibleRows" :key="row.attempt_id" class="border-b border-slate-100 last:border-0">
+                    <tr
+                        v-for="row in visibleRows"
+                        :key="row.attempt_id ?? 'u' + row.user_id"
+                        class="border-b border-slate-100 last:border-0"
+                        :class="!row.attempt_id ? 'bg-slate-50/70' : ''"
+                    >
                         <td class="px-3 py-3">
                             <div class="font-medium text-slate-800">{{ row.name }}</div>
                             <div class="text-xs text-slate-400">{{ row.class_name }}</div>
@@ -183,12 +223,15 @@ const resetExam = (row) => {
                         </td>
                         <td class="px-3 py-3 tabular-nums">{{ row.status === 'submitted' ? '-' : formatRemaining(row.remaining_seconds) }}</td>
                         <td class="px-3 py-3">
-                            <span class="flex items-center gap-1.5">
-                                <span class="h-2.5 w-2.5 rounded-full" :class="row.online ? 'bg-success-500' : 'bg-slate-300'"></span>
-                                <span class="text-xs">{{ row.online ? 'Online' : 'Offline' }}</span>
-                                <span v-if="row.outbox_pending > 0" class="text-xs text-warning-600">({{ row.outbox_pending }} pending)</span>
-                            </span>
-                            <div class="text-[10px] text-slate-400">Terakhir: {{ formatTime(row.last_seen_at) }}</div>
+                            <span v-if="!row.attempt_id" class="text-xs text-slate-400">Belum mulai</span>
+                            <template v-else>
+                                <span class="flex items-center gap-1.5">
+                                    <span class="h-2.5 w-2.5 rounded-full" :class="row.online ? 'bg-success-500' : 'bg-slate-300'"></span>
+                                    <span class="text-xs">{{ row.online ? 'Online' : 'Offline' }}</span>
+                                    <span v-if="row.outbox_pending > 0" class="text-xs text-warning-600">({{ row.outbox_pending }} pending)</span>
+                                </span>
+                                <div class="text-[10px] text-slate-400">Terakhir: {{ formatTime(row.last_seen_at) }}</div>
+                            </template>
                         </td>
                         <td class="px-3 py-3">
                             <span :class="row.warnings_count > 0 ? 'text-danger-600 font-bold' : 'text-slate-300'">{{ row.warnings_count }}</span>
@@ -197,7 +240,8 @@ const resetExam = (row) => {
                             </span>
                         </td>
                         <td class="px-3 py-3">
-                            <details class="relative">
+                            <span v-if="!row.attempt_id" class="text-xs text-slate-300">—</span>
+                            <details v-else class="relative">
                                 <summary class="cursor-pointer rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">Aksi</summary>
                                 <div class="absolute right-0 z-10 mt-1 flex w-44 flex-col rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
                                     <button class="rounded px-2 py-1.5 text-left text-xs hover:bg-slate-50" @click="post('admin.exams.monitoring.extend', row)">Perpanjang +5 menit</button>
@@ -205,7 +249,6 @@ const resetExam = (row) => {
                                     <button class="rounded px-2 py-1.5 text-left text-xs hover:bg-slate-50" @click="post('admin.exams.monitoring.reset-warnings', row)">Reset Warning</button>
                                     <button class="rounded px-2 py-1.5 text-left text-xs text-danger-600 hover:bg-danger-50" @click="post('admin.exams.monitoring.force-submit', row)">Submit Paksa</button>
                                     <button
-                                        v-if="row.attempt_id"
                                         class="rounded px-2 py-1.5 text-left text-xs text-danger-700 hover:bg-danger-50 border-t border-slate-100"
                                         title="Force majeure: hapus attempt & jawaban, siswa bisa mengulang"
                                         @click="resetExam(row)"
@@ -218,7 +261,7 @@ const resetExam = (row) => {
                     </tr>
                     <tr v-if="visibleRows.length === 0">
                         <td :colspan="isGlobal ? 8 : 7" class="px-4 py-8 text-center text-slate-500">
-                            {{ isGlobal ? 'Belum ada ujian berlangsung.' : 'Belum ada attempt pada ujian ini.' }}
+                            {{ isGlobal ? 'Belum ada ujian dengan peserta terdaftar.' : 'Belum ada peserta terdaftar pada ujian ini.' }}
                         </td>
                     </tr>
                 </tbody>

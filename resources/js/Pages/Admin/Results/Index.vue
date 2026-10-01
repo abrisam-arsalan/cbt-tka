@@ -93,6 +93,7 @@ const formatDate = (value) => {
                         <th class="px-4 py-3">Nilai</th>
                         <th class="px-4 py-3">Benar / Salah / Kosong</th>
                         <th class="px-4 py-3">Dikumpulkan</th>
+                        <th class="px-4 py-3">Keterangan</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -102,19 +103,25 @@ const formatDate = (value) => {
                         <td class="px-4 py-3 text-gray-600">{{ row.exam_title }}</td>
                         <td class="px-4 py-3">
                             <span
+                                v-if="row.participated"
                                 class="rounded-full px-2 py-0.5 text-xs font-semibold"
                                 :class="(row.score ?? 0) >= 75 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
                             >
                                 {{ row.score ?? '-' }}
                             </span>
+                            <span v-else class="rounded-full border border-dashed border-slate-300 bg-slate-50 px-2 py-0.5 text-xs text-slate-400">Belum</span>
                         </td>
                         <td class="px-4 py-3 text-gray-600">
-                            {{ row.correct_count }} / {{ row.wrong_count }} / {{ row.unanswered_count }}
+                            <template v-if="row.participated">{{ row.correct_count }} / {{ row.wrong_count }} / {{ row.unanswered_count }}</template>
+                            <template v-else>—</template>
                         </td>
-                        <td class="px-4 py-3 text-xs text-gray-500">{{ formatDate(row.submitted_at) }}</td>
+                        <td class="px-4 py-3 text-xs text-gray-500">{{ row.submitted_at ? formatDate(row.submitted_at) : '—' }}</td>
+                        <td class="px-4 py-3 text-xs" :class="row.participated ? 'text-gray-500' : 'text-warning-700'">
+                            {{ row.participated ? (row.submit_reason_label ?? '') : (row.note ?? 'Belum mengikuti ujian') }}
+                        </td>
                     </tr>
                     <tr v-if="rows.length === 0">
-                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">Belum ada hasil ujian.</td>
+                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">Belum ada hasil ujian.</td>
                     </tr>
                 </tbody>
             </table>

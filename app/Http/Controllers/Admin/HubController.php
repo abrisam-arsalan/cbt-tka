@@ -7,6 +7,7 @@ use App\Enums\ExamStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Attempt;
 use App\Models\Exam;
+use App\Models\ExamParticipant;
 use App\Models\SchoolClass;
 use App\Services\ExamSessionTokenService;
 use App\Services\PresenceService;
@@ -132,7 +133,7 @@ class HubController extends Controller
 
         return Inertia::render('Admin/Results/Index', [
             'title' => 'Hasil Ujian',
-            'rows' => $this->resultRows($examId, $classId, 500),
+            'rows' => $this->resolveRows($examId, $classId, 500),
             'exams' => Exam::query()->orderByDesc('id')->get(['id', 'title'])
                 ->map(fn (Exam $e) => ['value' => (int) $e->id, 'label' => $e->title])->all(),
             'classes' => SchoolClass::query()->active()->ordered()->get(['id', 'name'])
@@ -151,7 +152,7 @@ class HubController extends Controller
 
         return Inertia::render('Admin/Results/Print', [
             'title' => 'Cetak Hasil Ujian',
-            'rows' => $this->resultRows($examId, $classId, null),
+            'rows' => $this->resolveRows($examId, $classId, null),
             'school_name' => (string) config('cbt.card.school_name'),
             'exam_title' => $examId ? Exam::find($examId)?->title : null,
             'class_name' => $classId ? SchoolClass::find($classId)?->name : null,
@@ -165,18 +166,18 @@ class HubController extends Controller
     public function hasilExport(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         [$examId, $classId] = $this->resultFilters($request);
-        $rows = $this->resultRows($examId, $classId, null);
+        $rows = $this->resolveRows($examId, $classId, null);
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Hasil Ujian');
 
-        $header = ['No', 'Nama', 'NISN/Username', 'Kelas', 'Ujian', 'Nilai', 'Benar', 'Salah', 'Kosong', 'Total Soal', 'Dikumpulkan', 'Catatan'];
+        $header = ['No', 'Nama', 'NISN/Username', 'Kelas', 'Ujian', 'Nilai', 'Benar', 'Salah', 'Kosong', 'Total Soal', 'Dikumpulkan', 'Cara Submit', 'Keterangan'];
 
         foreach ($header as $i => $text) {
             $sheet->setCellValue([$i + 1, 1], $text);
         }
-        $sheet->getStyle('A1:L1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:M1')->getFont()->setBold(true);
         $sheet->freezePane('A2');
 
         $r = 2;
@@ -188,18 +189,19 @@ class HubController extends Controller
                 $row['class_name'],
                 $row['exam_title'],
                 $row['score'],
-                $row['correct_count'],
-                $row['wrong_count'],
-                $row['unanswered_count'],
+                $row['correct_count'] ?? '',
+                $row['wrong_count'] ?? '',
+                $row['unanswered_count'] ?? '',
                 $row['total_questions'],
                 $row['submitted_at'] ? Carbon::parse($row['submitted_at'])->format('d/m/Y H:i') : '',
                 $row['submit_reason_label'] ?? '',
+                $row['note'] ?? '',
             ], null, 'A'.$r);
             $r++;
         }
 
         // Lebar kolom adaptif agar rapi saat dibuka di Excel.
-        foreach (range('A', 'L') as $col) {
+        foreach (range('A', 'M') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -223,6 +225,90 @@ class HubController extends Controller
         $classId = $request->query('kelas') ? (int) $request->query('kelas') : null;
 
         return [$examId, $classId];
+    }
+
+    /**
+     * Baris hasil untuk tabel/cetak/unduh.
+     *
+     * Bila ujian tertentu dipilih → pakai ROSTER PESERTA lengkap: siswa yang
+     * belum ikut tetap muncul dengan keterangan, supaya daftar nilai tidak
+     * diam-diam kehilangan nama. Tanpa filter ujian → daftar attempt tersubmit.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveRows(?int $examId, ?int $classId, ?int $limit): array
+    {
+        $exam = $examId !== null ? Exam::find($examId) : null;
+
+        return $exam !== null
+            ? $this->rosterRows($exam, $classId)
+            : $this->resultRows($examId, $classId, $limit);
+    }
+
+    /**
+     * Roster peserta satu ujian: data attempt tersubmit, atau baris kosong
+     * dengan note ('Belum mengikuti ujian' / status attempt aktif).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function rosterRows(Exam $exam, ?int $classId): array
+    {
+        $participants = $exam->participants()
+            ->active()
+            ->with('user.schoolClass')
+            ->orderBy('id')
+            ->get();
+
+        // Attempt dicocokkan per user (exam+user unik) — tidak menggantungkan
+        // FK exam_participant_id yang bisa kosong pada data lama.
+        $attemptsByUser = $exam->attempts()->get()->keyBy('user_id');
+
+        return $participants
+            ->filter(fn (ExamParticipant $p) => $classId === null || (int) ($p->user?->class_id ?? 0) === $classId)
+            ->map(function (ExamParticipant $p) use ($exam, $attemptsByUser) {
+                $attempt = $attemptsByUser->get($p->user_id);
+
+                if ($attempt !== null && $attempt->status === AttemptStatus::Submitted) {
+                    return [
+                        'id' => (int) $attempt->id,
+                        'name' => $p->user?->name ?? '(siswa terhapus)',
+                        'username' => $p->user?->username,
+                        'class_name' => $p->user?->schoolClass?->name ?? '-',
+                        'exam_title' => $exam->title,
+                        'score' => $attempt->score !== null ? (float) $attempt->score : null,
+                        'correct_count' => (int) $attempt->correct_count,
+                        'wrong_count' => (int) $attempt->wrong_count,
+                        'unanswered_count' => (int) $attempt->unanswered_count,
+                        'total_questions' => (int) $attempt->total_questions,
+                        'submitted_at' => $attempt->submitted_at?->toIso8601String(),
+                        'submit_reason_label' => $attempt->submit_reason?->label(),
+                        'participated' => true,
+                        'note' => null,
+                    ];
+                }
+
+                return [
+                    'id' => 'p'.$p->id,
+                    'name' => $p->user?->name ?? '(siswa terhapus)',
+                    'username' => $p->user?->username,
+                    'class_name' => $p->user?->schoolClass?->name ?? '-',
+                    'exam_title' => $exam->title,
+                    'score' => $attempt?->score !== null ? (float) $attempt->score : null,
+                    'correct_count' => $attempt?->correct_count,
+                    'wrong_count' => $attempt?->wrong_count,
+                    'unanswered_count' => $attempt?->unanswered_count,
+                    'total_questions' => $attempt !== null ? (int) $attempt->total_questions : $exam->effectiveQuestionCount(),
+                    'submitted_at' => $attempt?->submitted_at?->toIso8601String(),
+                    'submit_reason_label' => $attempt?->submit_reason?->label(),
+                    'participated' => false,
+                    'note' => $attempt === null
+                        ? 'Belum mengikuti ujian'
+                        : 'Belum dikumpulkan ('.$attempt->status->label().')',
+                ];
+            })
+            ->sortBy([['class_name', 'asc'], ['name', 'asc']])
+            ->values()
+            ->all();
     }
 
     /**
@@ -254,6 +340,8 @@ class HubController extends Controller
                 'total_questions' => (int) $attempt->total_questions,
                 'submitted_at' => $attempt->submitted_at?->toIso8601String(),
                 'submit_reason_label' => $attempt->submit_reason?->label(),
+                'participated' => true,
+                'note' => null,
             ])
             ->all();
     }
