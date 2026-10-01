@@ -20,11 +20,14 @@ const form = useForm({
     is_active: props.question?.is_active ?? true,
 });
 
+// id & media ikut disimpan ulang dalam payload (hidden) — server memakai id
+// untuk mempertahankan baris opsi saat edit; tanpa itu ID opsi berganti dan
+// jawaban siswa yang sudah ada bisa tertukar kuncinya.
 const options = reactive(
-    (props.question?.options ?? []).map((o) => ({ label: o.label, option_text: o.option_text, is_correct: o.is_correct })),
+    (props.question?.options ?? []).map((o) => ({ id: o.id ?? null, label: o.label, option_text: o.option_text, media_url: o.media_url ?? null, is_correct: o.is_correct })),
 );
 const pairs = reactive(
-    (props.question?.matching_pairs ?? []).map((p) => ({ left_text: p.left_text, right_text: p.right_text })),
+    (props.question?.matching_pairs ?? []).map((p) => ({ id: p.id ?? null, left_text: p.left_text, right_text: p.right_text })),
 );
 
 if (options.length === 0) {

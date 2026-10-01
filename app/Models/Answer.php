@@ -86,7 +86,17 @@ class Answer extends Model
     {
         $value = $this->answer_payload['value'] ?? null;
 
-        return is_bool($value) ? $value : null;
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        // Varian lama/berbeda klien kadang mengirim "true"/"false"/1/0 sebagai
+        // string/int — jangan sampai jawaban benar tertolak hanya karena tipe.
+        if (is_string($value) || is_int($value)) {
+            return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        }
+
+        return null;
     }
 
     /**

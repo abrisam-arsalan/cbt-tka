@@ -20,18 +20,26 @@ const form = useForm({
     is_active: props.question?.is_active ?? true,
 });
 
+// id ikut dibawa (hidden) — server memakai id ini untuk mempertahankan baris
+// opsi/pasangan saat edit, supaya jawaban siswa yang sudah tersimpan tidak
+// kehilangan kunci (ID-nya tidak berganti).
 const options = reactive(
     (props.question?.options ?? []).map((o) => ({
+        id: o.id ?? null,
         label: o.label,
         option_text: o.option_text,
+        media_url: o.media_url ?? null,
         is_correct: o.is_correct,
     })),
 );
 
 const pairs = reactive(
     (props.question?.matching_pairs ?? []).map((p) => ({
+        id: p.id ?? null,
         left_text: p.left_text,
         right_text: p.right_text,
+        left_media_url: p.left_media_url ?? null,
+        right_media_url: p.right_media_url ?? null,
     })),
 );
 

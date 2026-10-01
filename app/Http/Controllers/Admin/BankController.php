@@ -12,6 +12,7 @@ use App\Models\QuestionBatch;
 use App\Models\SchoolClass;
 use App\Services\AuditLogService;
 use App\Services\QuestionBankImportService;
+use App\Services\QuestionContentWriter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -29,6 +30,7 @@ class BankController extends Controller
     public function __construct(
         private readonly QuestionBankImportService $imports,
         private readonly AuditLogService $audit,
+        private readonly QuestionContentWriter $content,
     ) {}
 
     public function index(Request $request): Response
@@ -202,10 +204,16 @@ class BankController extends Controller
                 'order' => (int) $question->order,
                 'is_active' => (bool) $question->is_active,
                 'options' => $question->options->map(fn ($o) => [
-                    'label' => $o->label, 'option_text' => $o->option_text, 'is_correct' => (bool) $o->is_correct,
+                    'id' => (int) $o->id,
+                    'label' => $o->label,
+                    'option_text' => $o->option_text,
+                    'media_url' => $o->media_url,
+                    'is_correct' => (bool) $o->is_correct,
                 ])->all(),
                 'matching_pairs' => $question->matchingPairs->map(fn ($p) => [
-                    'left_text' => $p->left_text, 'right_text' => $p->right_text,
+                    'id' => (int) $p->id,
+                    'left_text' => $p->left_text,
+                    'right_text' => $p->right_text,
                 ])->all(),
             ],
             'typeOptions' => QuestionType::options(),
@@ -265,53 +273,14 @@ class BankController extends Controller
             $question = $existing;
         }
 
-        $question->options()->delete();
-        $question->matchingPairs()->delete();
-
-        if ($type === QuestionType::Pg || $type === QuestionType::Pgk) {
-            $order = 0;
-            foreach ($validated['options'] ?? [] as $option) {
-                if (trim((string) $option['option_text']) === '') {
-                    continue;
-                }
-                Option::create([
-                    'question_id' => $question->id,
-                    'label' => $option['label'] ?? chr(ord('A') + $order),
-                    'option_text' => $option['option_text'],
-                    'is_correct' => (bool) ($option['is_correct'] ?? false),
-                    'order' => $order++,
-                ]);
-            }
-        }
-
-        if ($type === QuestionType::Boolean) {
-            foreach ($validated['options'] ?? [] as $option) {
-                if (trim((string) $option['option_text']) === '') {
-                    continue;
-                }
-                Option::create([
-                    'question_id' => $question->id,
-                    'label' => $option['label'],
-                    'option_text' => $option['option_text'],
-                    'is_correct' => (bool) ($option['is_correct'] ?? false),
-                    'order' => $option['label'] === 'true' ? 0 : 1,
-                ]);
-            }
-        }
-
-        if ($type === QuestionType::Matching) {
-            $order = 0;
-            foreach ($validated['matching_pairs'] ?? [] as $pair) {
-                if (trim((string) ($pair['left_text'] ?? '')) === '' || trim((string) ($pair['right_text'] ?? '')) === '') {
-                    continue;
-                }
-                MatchingPair::create([
-                    'question_id' => $question->id,
-                    'left_text' => $pair['left_text'],
-                    'right_text' => $pair['right_text'],
-                    'order' => $order++,
-                ]);
-            }
+        // Sinkron ID-preserving (lihat QuestionContentWriter): jawaban siswa
+        // mereferensikan ID opsi — tidak boleh berganti hanya karena diedit.
+        if ($type->usesOptions()) {
+            $this->content->syncPairs($question, []);
+            $this->content->syncOptions($question, $validated['options'] ?? [], $type);
+        } else {
+            $this->content->syncOptions($question, [], $type);
+            $this->content->syncPairs($question, $validated['matching_pairs'] ?? []);
         }
 
         return $question->refresh();

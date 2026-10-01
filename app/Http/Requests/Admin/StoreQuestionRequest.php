@@ -30,12 +30,16 @@ class StoreQuestionRequest extends FormRequest
             'is_active' => [$isUpdate ? 'sometimes' : 'nullable', 'boolean'],
 
             'options' => ['nullable', 'array', 'max:10'],
+            // id baris lama — dipakai QuestionContentWriter agar ID opsi tidak
+            // berganti saat soal diedit (jawaban siswa mereferensikannya).
+            'options.*.id' => ['nullable', 'integer'],
             'options.*.label' => ['nullable', 'string', 'max:8'],
             'options.*.option_text' => ['required_with:options', 'string', 'max:2000'],
             'options.*.media_url' => ['nullable', 'string', 'max:2048'],
             'options.*.is_correct' => ['nullable', 'boolean'],
 
             'matching_pairs' => ['nullable', 'array', 'max:20'],
+            'matching_pairs.*.id' => ['nullable', 'integer'],
             'matching_pairs.*.left_text' => ['required_with:matching_pairs', 'string', 'max:1000'],
             'matching_pairs.*.right_text' => ['required_with:matching_pairs', 'string', 'max:1000'],
             'matching_pairs.*.left_media_url' => ['nullable', 'string', 'max:2048'],

@@ -14,7 +14,10 @@ use Inertia\Response;
 
 class QuestionController extends Controller
 {
-    public function __construct(private readonly AuditLogService $audit) {}
+    public function __construct(
+        private readonly AuditLogService $audit,
+        private readonly \App\Services\QuestionContentWriter $content,
+    ) {}
 
     public function index(Request $request, Exam $exam): Response
     {
@@ -83,13 +86,18 @@ class QuestionController extends Controller
                 'order' => (int) $question->order,
                 'is_active' => (bool) $question->is_active,
                 'options' => $question->options->map(fn ($o) => [
+                    'id' => (int) $o->id,
                     'label' => $o->label,
                     'option_text' => $o->option_text,
+                    'media_url' => $o->media_url,
                     'is_correct' => (bool) $o->is_correct,
                 ])->all(),
                 'matching_pairs' => $question->matchingPairs->map(fn ($p) => [
+                    'id' => (int) $p->id,
                     'left_text' => $p->left_text,
                     'right_text' => $p->right_text,
+                    'left_media_url' => $p->left_media_url,
+                    'right_media_url' => $p->right_media_url,
                 ])->all(),
             ],
             'typeOptions' => \App\Enums\QuestionType::options(),
@@ -132,8 +140,10 @@ class QuestionController extends Controller
     }
 
     /**
-     * Simpan soal + kunci. Opsi/pasangan lama diganti seluruhnya supaya
-     * konsisten dengan form yang mengirim daftar lengkap.
+     * Simpan soal + kunci lewat QuestionContentWriter: baris opsi/pasangan yang
+     * sama dipertahankan ID-nya (jawaban siswa mereferensikan ID tersebut) —
+     * dulu semua opsi dihapus-dan-dibuat-ulang sehingga edit sekecil apa pun
+     * membuat jawaban siswa yang benar tertukar dan dinilai salah.
      */
     private function saveQuestion(StoreQuestionRequest $request, Exam $exam, ?Question $existing = null): Question
     {
@@ -157,41 +167,14 @@ class QuestionController extends Controller
             $question = $existing;
         }
 
-        $question->options()->delete();
-        $question->matchingPairs()->delete();
-
+        // Sinkron alih-alih hapus-bikin-ulang: ID opsi/pasangan dipertahankan
+        // agar jawaban siswa yang sudah tersimpan tidak kehilangan kuncinya.
         if ($type->usesOptions()) {
-            $order = 0;
-            foreach ($validated['options'] ?? [] as $option) {
-                if (trim((string) $option['option_text']) === '') {
-                    continue;
-                }
-
-                $question->options()->create([
-                    'label' => $option['label'] ?? chr(ord('A') + $order),
-                    'option_text' => $option['option_text'],
-                    'media_url' => $option['media_url'] ?? null,
-                    'is_correct' => (bool) ($option['is_correct'] ?? false),
-                    'order' => $order++,
-                ]);
-            }
-        }
-
-        if ($type === \App\Enums\QuestionType::Matching) {
-            $order = 0;
-            foreach ($validated['matching_pairs'] ?? [] as $pair) {
-                if (trim((string) ($pair['left_text'] ?? '')) === '' || trim((string) ($pair['right_text'] ?? '')) === '') {
-                    continue;
-                }
-
-                $question->matchingPairs()->create([
-                    'left_text' => $pair['left_text'],
-                    'right_text' => $pair['right_text'],
-                    'left_media_url' => $pair['left_media_url'] ?? null,
-                    'right_media_url' => $pair['right_media_url'] ?? null,
-                    'order' => $order++,
-                ]);
-            }
+            $this->content->syncPairs($question, []); // bersihkan sisa pasangan bila tipe berganti
+            $this->content->syncOptions($question, $validated['options'] ?? [], $type);
+        } else {
+            $this->content->syncOptions($question, [], $type); // bersihkan sisa opsi bila tipe berganti
+            $this->content->syncPairs($question, $validated['matching_pairs'] ?? []);
         }
 
         return $question->refresh();
