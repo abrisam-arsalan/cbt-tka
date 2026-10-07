@@ -17,7 +17,11 @@ const selectedOptionIds = (detail) => {
         return detail.answer_payload.option_ids;
     }
     if (detail.type === 'boolean' && detail.answer_payload.value != null) {
-        const target = detail.answer_payload.value ? 'true' : 'false';
+        // 'false' sebagai string tetap BENAR-benar false — jangan pakai
+        // truthiness JS (string non-kosong selalu true).
+        const v = detail.answer_payload.value;
+        const isTrue = v === true || v === 'true' || v === 1 || v === '1';
+        const target = isTrue ? 'true' : 'false';
         return detail.options.filter((o) => o.label === target).map((o) => o.id);
     }
     return [];
@@ -32,9 +36,12 @@ const optionClass = (detail, option) => {
 
 const statusOf = (detail) => {
     if (!detail.answered) return { label: 'Tidak dijawab', cls: 'bg-slate-200 text-slate-600' };
-    if (detail.answer_payload && detail.answer_payload.late_sync_flag) {
+    // late_sync_flag adalah KOLOM attempt (dikirim controller), bukan isi payload.
+    if (detail.late_sync_flag) {
         return { label: 'Terlambat sinkron', cls: 'bg-warning-100 text-warning-700' };
     }
+    // is_correct kini dihitung server oleh ScoringService yang sama dengan
+    // penilaian submit — bukan diasumsikan di sisi view.
     if (detail.is_correct) return { label: 'Benar', cls: 'bg-success-100 text-success-700' };
     return { label: 'Salah', cls: 'bg-danger-100 text-danger-700' };
 };
@@ -70,7 +77,7 @@ const statusOf = (detail) => {
 
             <!-- Pembahasan per soal -->
             <div class="space-y-3">
-                <div v-for="detail in details" :key="detail.number" class="rounded-xl bg-white p-4 shadow-sm">
+                <div v-for="detail in details" :key="detail.question_id" class="rounded-xl bg-white p-4 shadow-sm">
                     <div class="mb-2 flex items-center justify-between">
                         <span class="text-sm font-semibold text-slate-700">Soal {{ detail.number }}</span>
                         <span class="rounded-full px-2 py-0.5 text-xs" :class="statusOf(detail).cls">
@@ -100,6 +107,9 @@ const statusOf = (detail) => {
                     <div v-else-if="detail.pairs.length > 0" class="space-y-1.5 text-[15px]">
                         <div v-for="pair in detail.pairs" :key="pair.id" class="flex justify-between rounded-lg bg-slate-50 px-3 py-2">
                             <span>{{ pair.left }} → {{ pair.right }}</span>
+                        </div>
+                        <div v-if="detail.answered" class="mt-2 space-y-0.5 text-xs text-slate-600">
+                            <p><span class="font-semibold">Jawaban Anda:</span> {{ detail.student_answer ?? '—' }}</p>
                         </div>
                     </div>
                 </div>

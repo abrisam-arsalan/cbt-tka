@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attempt;
+use App\Services\ScoringService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -67,6 +68,14 @@ class HistoryController extends Controller
 
         $answers = $attempt->answers->keyBy('question_id');
 
+        // Sumber kebenaran pembahasan = ScoringService yang SAMA dengan
+        // penilaian saat submit (persist: false — tidak menulis apa pun).
+        // Dulu badge Benar/Salah membaca field is_correct yang ternyata tidak
+        // pernah dikirim payload => semua soal berjawaban tampil 'Salah'
+        // walau jawabannya hijau benar.
+        $verdicts = collect(app(ScoringService::class)->scoreAttempt($attempt, persist: false)->perQuestion)
+            ->keyBy('question_id');
+
         return Inertia::render('Student/Result', [
             'title' => 'Hasil: '.$attempt->exam?->title,
             'attempt' => [
@@ -82,16 +91,23 @@ class HistoryController extends Controller
                 'score' => $attempt->score !== null ? (float) $attempt->score : null,
                 'submit_reason_label' => $attempt->submit_reason?->label(),
             ],
-            'details' => $questions->map(function ($question) use ($answers) {
+            'details' => $questions->map(function ($question) use ($answers, $verdicts) {
                 $answer = $answers[$question->id] ?? null;
+                $verdict = $verdicts->get((int) $question->id);
 
                 return [
+                    'question_id' => (int) $question->id,
                     'number' => (int) $question->order,
                     'type' => $question->type->value,
                     'type_label' => $question->type->label(),
                     'question_text' => $question->question_text,
                     'media_url' => $question->media_url,
-                    'answered' => $answer !== null && ! $answer->isBlank(),
+                    // answered/is_correct/strings SEMUA dari verdict penilaian —
+                    // badge tak akan pernah menyimpang dari nilai yang dihitung.
+                    'answered' => (bool) ($verdict['answered'] ?? ($answer !== null && ! $answer->isBlank())),
+                    'is_correct' => (bool) ($verdict['is_correct'] ?? false),
+                    'student_answer' => $verdict['student_answer'] ?? null,
+                    'correct_answer' => $verdict['correct_answer'] ?? null,
                     'options' => $question->options->map(fn ($o) => [
                         'id' => (int) $o->id,
                         'label' => $o->label,
