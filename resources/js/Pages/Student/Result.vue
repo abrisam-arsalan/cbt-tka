@@ -6,6 +6,8 @@ const props = defineProps({
     title: String,
     attempt: Object,
     details: { type: Array, default: () => [] },
+    // false => admin memilih "Hanya Nilai": pembahasan tidak dikirim server.
+    can_review: { type: Boolean, default: true },
 });
 
 const selectedOptionIds = (detail) => {
@@ -43,6 +45,8 @@ const statusOf = (detail) => {
     // is_correct kini dihitung server oleh ScoringService yang sama dengan
     // penilaian submit — bukan diasumsikan di sisi view.
     if (detail.is_correct) return { label: 'Benar', cls: 'bg-success-100 text-success-700' };
+    // PGK sebagian benar tanpa menyertakan pilihan salah = poin ½.
+    if (detail.is_partial) return { label: 'Sebagian benar (½)', cls: 'bg-warning-100 text-warning-700' };
     return { label: 'Salah', cls: 'bg-danger-100 text-danger-700' };
 };
 </script>
@@ -75,8 +79,8 @@ const statusOf = (detail) => {
                 </p>
             </div>
 
-            <!-- Pembahasan per soal -->
-            <div class="space-y-3">
+            <!-- Pembahasan per soal — hanya bila admin mengizinkan (mode full_review) -->
+            <div v-if="can_review" class="space-y-3">
                 <div v-for="detail in details" :key="detail.question_id" class="rounded-xl bg-white p-4 shadow-sm">
                     <div class="mb-2 flex items-center justify-between">
                         <span class="text-sm font-semibold text-slate-700">Soal {{ detail.number }}</span>
@@ -113,6 +117,16 @@ const statusOf = (detail) => {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Mode "Hanya Nilai": pembahasan tidak dikirim server sama sekali -->
+            <div v-else class="rounded-xl bg-white p-6 text-center shadow-sm">
+                <div class="mb-2 text-3xl">🔒</div>
+                <p class="text-sm font-semibold text-slate-700">Pembahasan tidak tersedia untuk ujian ini.</p>
+                <p class="mt-1 text-xs text-slate-500">
+                    Guru mengatur hasil ujian ini untuk menampilkan nilai saja.
+                    Hubungi guru bila ada pertanyaan mengenai penilaian.
+                </p>
             </div>
         </div>
     </StudentLayout>

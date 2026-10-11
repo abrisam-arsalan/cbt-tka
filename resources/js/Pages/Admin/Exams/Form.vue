@@ -34,6 +34,7 @@ const form = useForm({
     anti_cheat_enabled: props.exam?.anti_cheat_enabled ?? false,
     anti_cheat_max_warnings: props.exam?.anti_cheat_max_warnings ?? 3,
     require_fullscreen: props.exam?.require_fullscreen ?? false,
+    result_mode: props.exam?.result_mode ?? 'full_review',
     anti_cheat_action: props.exam?.anti_cheat_action ?? 'log_only',
     shuffle_questions: props.exam?.shuffle_questions ?? false,
     shuffle_options: props.exam?.shuffle_options ?? false,
@@ -220,6 +221,32 @@ const submit = () => {
                             (tombol Esc, floating window / split-screen Android, ganti aplikasi)
                             tercatat sebagai pelanggaran anti-cheat dan layar dikunci sampai kembali.
                             Aktifkan bersama Anti-Cheat agar peringatan otomatis tersimpan.
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-sm font-semibold text-slate-700">Hasil yang Dilihat Siswa</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label
+                                v-for="opt in [
+                                    { value: 'full_review', label: 'Nilai + Pembahasan' },
+                                    { value: 'score_only', label: 'Hanya Nilai' },
+                                ]"
+                                :key="opt.value"
+                                class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-semibold"
+                                :class="form.result_mode === opt.value ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'"
+                            >
+                                <input v-model="form.result_mode" type="radio" name="result_mode" :value="opt.value" class="hidden" />
+                                {{ opt.label }}
+                            </label>
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500">
+                            <template v-if="form.result_mode === 'score_only'">
+                                Setelah mengumpulkan, siswa hanya melihat angka nilai — daftar soal, kunci, dan jawaban tidak ditampilkan.
+                            </template>
+                            <template v-else>
+                                Siswa dapat membuka pembahasan: semua soal, jawaban mereka, dan kunci yang ditandai benar/salah.
+                            </template>
                         </p>
                     </div>
 

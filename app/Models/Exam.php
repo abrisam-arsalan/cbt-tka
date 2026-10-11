@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
 
 #[Fillable([
     'title', 'description', 'class_id', 'grade', 'duration_minutes', 'question_count', 'start_at', 'end_at', 'status', 'paused_at',
-    'anti_cheat_enabled', 'anti_cheat_max_warnings', 'anti_cheat_action', 'require_fullscreen',
+    'anti_cheat_enabled', 'anti_cheat_max_warnings', 'anti_cheat_action', 'require_fullscreen', 'result_mode',
     'shuffle_questions', 'shuffle_options', 'offline_grace_minutes', 'created_by',
 ])]
 class Exam extends Model
@@ -143,6 +143,20 @@ class Exam extends Model
         }
 
         return 'Semua siswa';
+    }
+
+    /**
+     * Apakah siswa boleh melihat pembahasan lengkap setelah submit.
+     * score_only => hanya angka nilai yang tampil.
+     */
+    public function showsFullReview(): bool
+    {
+        return (string) $this->result_mode !== 'score_only';
+    }
+
+    public function resultModeLabel(): string
+    {
+        return $this->showsFullReview() ? 'Nilai + pembahasan' : 'Hanya nilai';
     }
 
     /**

@@ -166,6 +166,8 @@ class ExamController extends Controller
                 'anti_cheat_max_warnings' => (int) $exam->anti_cheat_max_warnings,
                 'anti_cheat_action' => $exam->anti_cheat_action?->value,
                 'require_fullscreen' => (bool) $exam->require_fullscreen,
+                'result_mode' => $exam->showsFullReview() ? 'full_review' : 'score_only',
+                'result_mode_label' => $exam->resultModeLabel(),
                 'offline_grace_minutes' => (int) $exam->offline_grace_minutes,
                 'shuffle_questions' => (bool) $exam->shuffle_questions,
                 'shuffle_options' => (bool) $exam->shuffle_options,
@@ -187,7 +189,7 @@ class ExamController extends Controller
             'exam' => $exam->only([
                 'id', 'title', 'description', 'class_id', 'grade', 'duration_minutes', 'question_count',
                 'start_at', 'end_at', 'anti_cheat_enabled', 'anti_cheat_max_warnings',
-                'anti_cheat_action', 'require_fullscreen', 'shuffle_questions', 'shuffle_options', 'offline_grace_minutes',
+                'anti_cheat_action', 'require_fullscreen', 'result_mode', 'shuffle_questions', 'shuffle_options', 'offline_grace_minutes',
             ]),
             'statusOptions' => ExamStatus::options(),
             'antiCheatActionOptions' => \App\Enums\AntiCheatAction::options(),

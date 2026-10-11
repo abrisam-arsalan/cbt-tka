@@ -16,6 +16,7 @@ final class ScoreResult
         public readonly int $unansweredCount,
         public readonly float $score,
         public readonly array $perQuestion = [],
+        public readonly float $totalPoints = 0.0,
     ) {}
 
     public function toArray(): array

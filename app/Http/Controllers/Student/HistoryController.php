@@ -68,6 +68,11 @@ class HistoryController extends Controller
 
         $answers = $attempt->answers->keyBy('question_id');
 
+        // Mode hasil ujian: score_only => pembahasan TIDAK dikirim ke browser
+        // sama sekali (bukan sekadar disembunyikan di Vue) — kunci jawaban
+        // tidak boleh bisa dibaca lewat view-source/DevTools.
+        $canReview = $attempt->exam?->showsFullReview() ?? true;
+
         // Sumber kebenaran pembahasan = ScoringService yang SAMA dengan
         // penilaian saat submit (persist: false — tidak menulis apa pun).
         // Dulu badge Benar/Salah membaca field is_correct yang ternyata tidak
@@ -91,7 +96,8 @@ class HistoryController extends Controller
                 'score' => $attempt->score !== null ? (float) $attempt->score : null,
                 'submit_reason_label' => $attempt->submit_reason?->label(),
             ],
-            'details' => $questions->map(function ($question) use ($answers, $verdicts) {
+            'can_review' => $canReview,
+            'details' => $canReview ? $questions->map(function ($question) use ($answers, $verdicts) {
                 $answer = $answers[$question->id] ?? null;
                 $verdict = $verdicts->get((int) $question->id);
 
@@ -106,6 +112,8 @@ class HistoryController extends Controller
                     // badge tak akan pernah menyimpang dari nilai yang dihitung.
                     'answered' => (bool) ($verdict['answered'] ?? ($answer !== null && ! $answer->isBlank())),
                     'is_correct' => (bool) ($verdict['is_correct'] ?? false),
+                    'points' => (float) ($verdict['points'] ?? 0),
+                    'is_partial' => (bool) ($verdict['is_partial'] ?? false),
                     'student_answer' => $verdict['student_answer'] ?? null,
                     'correct_answer' => $verdict['correct_answer'] ?? null,
                     'options' => $question->options->map(fn ($o) => [
@@ -123,7 +131,7 @@ class HistoryController extends Controller
                     'answer_payload' => $answer?->answer_payload,
                     'late_sync_flag' => (bool) ($answer?->late_sync_flag ?? false),
                 ];
-            })->all(),
+            })->all() : [],
         ]);
     }
 }

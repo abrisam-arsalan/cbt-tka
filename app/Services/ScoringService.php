@@ -15,8 +15,9 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
  * Aturan penilaian (sesuai PRD):
  *   pg       -> benar bila opsi yang dipilih sama dengan satu-satunya kunci
  *   boolean  -> benar bila nilai sama dengan kunci
- *   pgk      -> benar bila HIMPUNAN pilihan sama persis dengan himpunan kunci.
- *               Kurang satu atau lebih satu pilihan = salah. Tidak ada nilai parsial.
+ *   pgk      -> himpunan pilihan sama persis dengan kunci = poin penuh (1).
+ *               Sebagian benar TANPA satu pun pilihan salah = poin ½.
+ *               Menyertak pilihan yang tidak ada di kunci = 0.
  *   matching -> benar HANYA bila seluruh pasangan tepat. Tidak ada nilai sebagian.
  *
  * Soal yang tidak dijawab dihitung ke unanswered_count, bukan wrong_count,
@@ -36,10 +37,12 @@ class ScoringService
         $correct = 0;
         $wrong = 0;
         $unanswered = 0;
+        $points = 0.0;
         $perQuestion = [];
 
         foreach ($questions as $question) {
             $answer = $answers[$question->id] ?? null;
+            $earned = 0.0;
 
             $answered = $answer !== null && ! $answer->isBlank();
 
@@ -47,20 +50,25 @@ class ScoringService
                 $unanswered++;
                 $isCorrect = false;
             } else {
-                $isCorrect = $this->judge($question, $answer);
+                // Poin: 1 penuh, ½ parsial (pgk sebagian benar), 0 salah.
+                $earned = $this->judgePoints($question, $answer);
+                $isCorrect = $earned >= 1.0;
 
                 if ($isCorrect) {
                     $correct++;
                 } else {
                     $wrong++;
                 }
+
+                $points += $earned;
             }
 
-            $perQuestion[] = $this->describe($question, $answer, $answered, $isCorrect);
+            $perQuestion[] = $this->describe($question, $answer, $answered, $isCorrect, $earned);
         }
 
         $total = $questions->count();
-        $score = $total > 0 ? round(($correct / $total) * 100, 2) : 0.0;
+        // Skor memakai POIN (bukan jumlah benar) agar parsial ½ pgk terhitung.
+        $score = $total > 0 ? round(($points / $total) * 100, 2) : 0.0;
 
         $result = new ScoreResult(
             totalQuestions: $total,
@@ -69,6 +77,7 @@ class ScoringService
             unansweredCount: $unanswered,
             score: $score,
             perQuestion: $perQuestion,
+            totalPoints: $points,
         );
 
         if ($persist) {
@@ -104,6 +113,51 @@ class ScoringService
             QuestionType::Boolean => $this->judgeBoolean($question, $answer),
             QuestionType::Matching => $this->judgeMatching($question, $answer),
         };
+    }
+
+    /**
+     * Poin yang diperoleh satu jawaban: 1.0 penuh, 0.5 parsial (pgk), 0.0 salah.
+     */
+    public function judgePoints(Question $question, ?Answer $answer): float
+    {
+        if ($answer === null || $answer->isBlank()) {
+            return 0.0;
+        }
+
+        if (! $question->hasValidKey()) {
+            return 0.0;
+        }
+
+        if ($question->type === QuestionType::Pgk) {
+            return $this->pgkPoints($question, $answer);
+        }
+
+        return $this->judge($question, $answer) ? 1.0 : 0.0;
+    }
+
+    /**
+     * PGK: himpunan sama persis = 1; sebagian benar tanpa menyertakan
+     * pilihan di luar kunci = ½; ada satu saja pilihan salah = 0.
+     */
+    private function pgkPoints(Question $question, Answer $answer): float
+    {
+        $selected = $answer->selectedOptionIds();
+        $key = $question->correctOptionIds();
+
+        if ($selected === [] || $key === []) {
+            return 0.0;
+        }
+
+        sort($key);
+
+        if ($selected === $key) {
+            return 1.0;
+        }
+
+        $hasWrong = array_diff($selected, $key) !== [];
+        $hasHit = array_intersect($selected, $key) !== [];
+
+        return (! $hasWrong && $hasHit) ? 0.5 : 0.0;
     }
 
     private function judgePg(Question $question, Answer $answer): bool
@@ -168,7 +222,7 @@ class ScoringService
      *
      * @return array<string, mixed>
      */
-    private function describe(Question $question, ?Answer $answer, bool $answered, bool $isCorrect): array
+    private function describe(Question $question, ?Answer $answer, bool $answered, bool $isCorrect, float $points = 0.0): array
     {
         return [
             'question_id' => $question->id,
@@ -180,6 +234,8 @@ class ScoringService
             'media_url' => $question->media_url,
             'answered' => $answered,
             'is_correct' => $isCorrect,
+            'points' => $points,
+            'is_partial' => $points > 0 && $points < 1,
             'student_answer' => $this->humanizeAnswer($question, $answer),
             'correct_answer' => $this->humanizeKey($question),
             'options' => $question->type->usesOptions()
