@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AdminLoginController;
+use App\Http\Controllers\Auth\HandoffController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Student\AntiCheatController;
 use App\Http\Controllers\Student\DashboardController;
@@ -30,6 +31,13 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware('guest')->group(function () {
+    // Handoff portal → CBT (PRD v2 §6): verifikasi kode sekali-pakai ke
+    // portal server-ke-server, lalu login tanpa password lokal.
+    // Login manual di bawah TETAP berfungsi sebagai fallback.
+    Route::get('sso', [HandoffController::class, 'show'])
+        ->middleware('throttle:login')
+        ->name('sso.handoff');
+
     // Login siswa (publik — alamat dibagikan lewat kartu ujian).
     Route::get('login', [LoginController::class, 'show'])->name('login');
     Route::post('login', [LoginController::class, 'store'])

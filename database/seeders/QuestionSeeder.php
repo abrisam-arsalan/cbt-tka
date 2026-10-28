@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\SchoolClass;
 use App\Models\User;
 use App\Services\QuestionBankImportService;
 use Illuminate\Database\Seeder;
@@ -18,7 +19,7 @@ class QuestionSeeder extends Seeder
         $admin = User::where('username', 'admin')->first();
         $service = app(QuestionBankImportService::class);
 
-        $this->importBatch($service, $admin, 'Matematika', AppModelsSchoolClass::query()->where('name', '7A')->value('id'), [
+        $this->importBatch($service, $admin, 'Matematika', SchoolClass::query()->where('name', '7A')->value('id'), [
             ['pg', '7A', '', 'Berapakah hasil dari 2 + 2 × 3?', '', '4', '8', '12', '6', '10', 'B', '', '', '', '', '', '', '', '', '', '', 1],
             ['pgk', '7A', '', 'Manakah bilangan prima? (pilih semua)', '', '2', '3', '4', '5', '9', 'A,B,D', '', '', '', '', '', '', '', '', '', '', 1],
             ['boolean', '7A', '', 'Setiap bilangan prima adalah ganjil.', '', '', '', '', '', '', 'Salah', '', '', '', '', '', '', '', '', '', '', 1],
@@ -26,7 +27,7 @@ class QuestionSeeder extends Seeder
             ['pg', '7A', '', 'Berapakah akar dari 144?', '', '10', '11', '12', '13', '14', 'C', '', '', '', '', '', '', '', '', '', '', 1],
         ]);
 
-        $this->importBatch($service, $admin, 'IPA Terpadu', AppModelsSchoolClass::query()->where('name', '8A')->value('id'), [
+        $this->importBatch($service, $admin, 'IPA Terpadu', SchoolClass::query()->where('name', '8A')->value('id'), [
             ['pg', '8A', '', 'Planet terdekat dari Matahari adalah...', '', 'Venus', 'Merkurius', 'Mars', 'Bumi', 'Jupiter', 'B', '', '', '', '', '', '', '', '', '', '', 1],
             ['boolean', '8A', '', 'Air mendidih pada 100°C di tekanan normal.', '', '', '', '', '', '', 'Benar', '', '', '', '', '', '', '', '', '', '', 1],
             ['matching', '8A', '', 'Pasangkan gas dengan rumusnya.', '', '', '', '', '', '', '', 'Oksigen', 'O₂', 'Nitrogen', 'N₂', 'Karbon dioksida', 'CO₂', '', '', '', '', 1],

@@ -11,6 +11,7 @@ use App\Models\Question;
 use App\Models\QuestionBatch;
 use App\Models\SchoolClass;
 use App\Services\AuditLogService;
+use App\Services\PortalSubjectService;
 use App\Services\QuestionBankImportService;
 use App\Services\QuestionContentWriter;
 use Illuminate\Http\RedirectResponse;
@@ -31,6 +32,7 @@ class BankController extends Controller
         private readonly QuestionBankImportService $imports,
         private readonly AuditLogService $audit,
         private readonly QuestionContentWriter $content,
+        private readonly PortalSubjectService $portalSubjects,
     ) {}
 
     public function index(Request $request): Response
@@ -68,6 +70,7 @@ class BankController extends Controller
         return Inertia::render('Admin/Bank/Import', [
             'title' => 'Impor Bank Soal',
             'classes' => $this->classOptions(),
+            'subjects' => $this->portalSubjects->list(),
             'columns' => QuestionBankImportService::COLUMNS,
             'importErrors' => $request->session()->pull('import_errors', []),
         ]);
@@ -75,20 +78,31 @@ class BankController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        // Nama batch OTOMATIS: KODE_KELAS_DDMMYYYY (mis. TIK_7_28102026).
+        // Pola: kode mapel portal (huruf+angka, maks 8) + tingkat 7/8/9 +
+        // tanggal impor. Format tidak ditampilkan di form agar ringkas.
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
-            'class_id' => ['nullable', 'integer', 'exists:classes,id'],
+            'subject_id' => ['required', 'string', 'max:32'],
+            'subject_code' => ['required', 'string', 'regex:/^[A-Z0-9]{1,8}$/'],
+            'tingkat' => ['required', 'in:7,8,9'],
             'file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls,zip', 'max:20480'],
         ], [
+            'subject_id.required' => 'Pilih mata pelajaran dari portal.',
+            'tingkat.required' => 'Pilih kelas (7, 8, atau 9).',
+            'tingkat.in' => 'Kelas harus 7, 8, atau 9.',
             'file.mimes' => 'File harus berformat CSV, XLSX, atau ZIP (template + gambar).',
             'file.max' => 'Ukuran file maksimum 20 MB.',
         ]);
 
+        $autoName = strtoupper($validated['subject_code']).'_'.$validated['tingkat'].'_'.now()->format('dmY');
+
+        $classId = $this->resolveGradeClass($validated['tingkat']);
+
         try {
             $result = $this->imports->import(
                 $request->file('file'),
-                $validated['name'],
-                $validated['class_id'] ?? null,
+                $autoName,
+                $classId,
                 $request->user(),
             );
         } catch (\RuntimeException $e) {
@@ -294,5 +308,23 @@ class BankController extends Controller
         return SchoolClass::query()->active()->ordered()->get()
             ->map(fn (SchoolClass $c) => ['value' => (int) $c->id, 'label' => $c->name])
             ->all();
+    }
+
+    /**
+     * Kelas wajib = jenjang (7/8/9), bukan rombel spesifik. Dipetakan ke satu
+     * rombel aktif tingkat tsb. sebagai pemilik batch (kolom `kelas` di tiap
+     * baris CSV tetap bisa menimpa per soal — lihat normalizeRow).
+     */
+    private function resolveGradeClass(string $tingkat): ?int
+    {
+        $kelas = SchoolClass::query()->active()
+            ->where('name', $tingkat.'A')
+            ->first()
+            ?? SchoolClass::query()->active()
+                ->where('name', 'like', $tingkat.'%')
+                ->ordered()
+                ->first();
+
+        return $kelas ? (int) $kelas->id : null;
     }
 }

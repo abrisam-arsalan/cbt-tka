@@ -1,8 +1,7 @@
 <script setup>
+import { ref, computed } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed } from 'vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import ImportPanel from '@/Admin/Shared/ImportPanel.vue';
 
 const props = defineProps({
     title: String,
@@ -26,9 +25,21 @@ const grouped = computed(() => {
     });
 });
 
-const btnPrimary = 'bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-sm transition duration-150 flex items-center justify-center text-center w-full sm:w-auto';
 const btnPrimarySm = 'bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
 const btnDangerSm = 'bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
+
+const syncing = ref(false);
+
+const syncFromPortal = () => {
+    if (confirm('Sinkronkan seluruh data kelas dari Portal Panglima ke Ujian?')) {
+        syncing.value = true;
+        router.post(route('admin.classes.sync'), {}, {
+            onFinish: () => {
+                syncing.value = false;
+            },
+        });
+    }
+};
 
 const destroy = (classItem) => {
     if (!confirm(`Hapus kelas "${classItem.name}"?`)) return;
@@ -41,19 +52,36 @@ const destroy = (classItem) => {
         <Head :title="title" />
 
         <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 class="text-xl font-bold text-gray-900">Manajemen Kelas</h2>
-            <Link :href="route('admin.classes.create')" :class="btnPrimary">
-                + Tambah Kelas
-            </Link>
+            <div>
+                <h2 class="text-xl font-bold text-gray-900">Manajemen Kelas</h2>
+                <p class="text-sm text-gray-500">Kelola rombel & jenjang kelas yang disinkronkan dari Portal Panglima.</p>
+            </div>
+            <button
+                type="button"
+                @click="syncFromPortal"
+                :disabled="syncing"
+                class="flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white shadow-sm shadow-brand-600/25 transition hover:bg-brand-700 disabled:opacity-50"
+            >
+                <svg v-if="syncing" class="h-4 w-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                <span v-if="syncing">Mensinkronkan...</span>
+                <span v-else>🔄 Sinkronkan Kelas dari Portal</span>
+            </button>
         </div>
 
-        <ImportPanel
-            template-route="admin.classes.template"
-            import-route="admin.classes.import"
-            :columns="['nama', 'tingkat', 'tahun_ajaran', 'deskripsi', 'aktif']"
-            note="Kolom &quot;nama&quot; wajib. Kelas dengan nama + tahun ajaran yang sama tidak akan diduplikasi."
-            :errors="importErrors"
-        />
+        <div class="mb-4 rounded-xl border border-sky-100 bg-sky-50/70 p-4 text-xs text-sky-800">
+            <div class="flex items-start gap-2">
+                <span class="text-base">ℹ️</span>
+                <div>
+                    <p class="font-semibold text-sky-900">Manajemen Kelas Dikelola Terpusat di Portal Panglima</p>
+                    <p class="mt-0.5 text-sky-700">
+                        Sesuai konfigurasi sistem, penambahan dan pengelolaan data kelas (nama rombel & jenjang) dilakukan terpusat melalui <b>Portal Panglima</b> (Master Data & Impor). Gunakan tombol <b>"Sinkronkan Kelas dari Portal"</b> di atas untuk menarik pembaruan kelas terbaru ke CBT.
+                    </p>
+                </div>
+            </div>
+        </div>
 
         <div class="overflow-x-auto rounded-xl bg-white shadow-sm">
             <table class="w-full text-sm">

@@ -91,4 +91,18 @@ return [
         'trusted_proxies' => env('TRUSTED_PROXIES', '*'),
     ],
 
+    /*
+    | Handoff portal → CBT (PRD v2 §6). Kode sekali-pakai diverifikasi
+    | ke portal server-ke-server dengan shared secret yang sama dengan
+    | CBT_HANDOFF_SECRET di portal.
+    */
+    'portal_base_url' => env('CBT_PORTAL_BASE_URL', 'https://panglima.smp5tegal.sch.id'),
+    'handoff_secret' => env('CBT_HANDOFF_SECRET'),
+
+    /*
+    | API mesin-ke-mesin portal (daftar mapel untuk dropdown impor bank soal).
+    | Token HARUS SAMA dengan API_TOKEN di .env portal.
+    */
+    'portal_api_token' => env('CBT_PORTAL_API_TOKEN'),
+
 ];

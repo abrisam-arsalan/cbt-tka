@@ -18,6 +18,7 @@ class ClassController extends Controller
     public function __construct(
         private readonly AuditLogService $audit,
         private readonly BulkImportService $imports,
+        private readonly \App\Services\StudentSyncService $syncService,
     ) {}
 
     public function index(Request $request): Response
@@ -43,6 +44,30 @@ class ClassController extends Controller
     }
 
     /**
+     * Sinkronkan seluruh data kelas dari database Portal Panglima ke CBT.
+     */
+    public function sync(): RedirectResponse
+    {
+        $result = $this->syncService->syncClasses();
+
+        if (!empty($result['errors'])) {
+            return redirect()
+                ->route('admin.classes.index')
+                ->with('warning', 'Sinkronisasi kelas selesai dengan catatan: ' . implode('; ', $result['errors']));
+        }
+
+        if ($result['total'] === 0) {
+            return redirect()
+                ->route('admin.classes.index')
+                ->with('warning', 'Tidak ada data kelas ditemukan di Portal Panglima.');
+        }
+
+        return redirect()
+            ->route('admin.classes.index')
+            ->with('success', "Berhasil mensinkronkan {$result['synced']} kelas dari Portal Panglima (Baru: {$result['created']}, Diperbarui: {$result['updated']}).");
+    }
+
+    /**
      * Unduh template CSV untuk menambah banyak kelas sekaligus.
      */
     public function template(): BinaryFileResponse
@@ -53,55 +78,30 @@ class ClassController extends Controller
     }
 
     /**
-     * Impor kelas dari file CSV/XLSX.
+     * Impor kelas dinonaktifkan di CBT — dikelola dari Portal Panglima.
      */
     public function import(Request $request): RedirectResponse
     {
-        $request->validate([
-            'file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls', 'max:5120'],
-        ], [
-            'file.mimes' => 'File harus berformat CSV atau XLSX.',
-            'file.max' => 'Ukuran file maksimum 5 MB.',
-        ]);
-
-        $result = $this->imports->importClasses($request->file('file'), $request->user());
-
-        if ($result['errors'] !== []) {
-            $request->session()->put('import_errors', $result['errors']);
-        }
-
-        $message = $result['imported'] > 0
-            ? "{$result['imported']} kelas berhasil ditambahkan"
-               .($result['errors'] !== [] ? ', '.count($result['errors'])." baris dilewati (lihat detail)." : '.')
-            : 'Tidak ada kelas yang ditambahkan. Periksa kembali file Anda.';
-
         return redirect()
             ->route('admin.classes.index')
-            ->with($result['imported'] > 0 ? 'success' : 'warning', $message);
+            ->with('warning', 'Impor data kelas dilakukan terpusat melalui Portal Panglima. Silakan kelola data kelas di Portal Panglima.');
     }
 
-    public function create(): Response
+    /**
+     * Tambah kelas dinonaktifkan di CBT — dikelola dari Portal Panglima.
+     */
+    public function create(): RedirectResponse
     {
-        return Inertia::render('Admin/Classes/Form', [
-            'title' => 'Tambah Kelas',
-            'edit' => false,
-            'class' => null,
-        ]);
+        return redirect()
+            ->route('admin.classes.index')
+            ->with('warning', 'Penambahan kelas dikelola terpusat dari Portal Panglima. Silakan tambahkan kelas di Portal Panglima lalu lakukan sinkronisasi.');
     }
 
     public function store(StoreClassRequest $request): RedirectResponse
     {
-        $class = SchoolClass::create($request->validated());
-
-        $this->audit->log(
-            action: 'class.created',
-            subject: $class,
-            description: "Kelas {$class->name} dibuat.",
-        );
-
         return redirect()
             ->route('admin.classes.index')
-            ->with('success', "Kelas {$class->name} berhasil dibuat.");
+            ->with('warning', 'Penambahan kelas dikelola terpusat dari Portal Panglima. Silakan tambahkan kelas di Portal Panglima lalu lakukan sinkronisasi.');
     }
 
     public function edit(SchoolClass $class): Response

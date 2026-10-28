@@ -76,19 +76,18 @@ Route::middleware(['auth', 'role:admin', 'throttle:admin'])->group(function () {
     Route::put('bank/{batch}/soal/{question}', [BankController::class, 'updateQuestion'])->name('bank.questions.update');
     Route::delete('bank/{batch}/soal/{question}', [BankController::class, 'destroyQuestion'])->name('bank.questions.destroy');
 
-    // Manajemen user (admin + siswa)
-    Route::get('users/template', [UserController::class, 'template'])->name('users.template');
-    Route::post('users/import', [UserController::class, 'import'])
-        ->middleware('throttle:import')
-        ->name('users.import');
-    Route::resource('users', UserController::class)->except(['show']);
+    // PRD v2 D7: kelola Users & Classes PINDAH ke Portal Panglima.
+    // Route lokal create/store/import/template/destroy DIMATIKAN — akun hanya
+    // dibaca (index) + disinkronkan dari portal. Edit lokal (update PIN dsb.)
+    // dimatikan agar portal jadi satu-satunya penulis identitas.
+    // Manajemen user — hanya baca + sync dari Portal Panglima
+    Route::post('users/sync', [UserController::class, 'sync'])->name('users.sync');
+    Route::get('users', [UserController::class, 'index'])->name('users.index');
+    Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
 
-    // Manajemen kelas
-    Route::get('classes/template', [ClassController::class, 'template'])->name('classes.template');
-    Route::post('classes/import', [ClassController::class, 'import'])
-        ->middleware('throttle:import')
-        ->name('classes.import');
-    Route::resource('classes', ClassController::class)->except(['show']);
+    // Manajemen kelas — hanya baca + sync dari Portal Panglima
+    Route::post('classes/sync', [ClassController::class, 'sync'])->name('classes.sync');
+    Route::get('classes', [ClassController::class, 'index'])->name('classes.index');
 
     // Ujian + aksi transisi status
     Route::resource('exams', ExamController::class);
@@ -158,3 +157,27 @@ Route::middleware(['auth', 'role:admin', 'throttle:admin'])->group(function () {
     // Audit log (read-only)
     Route::get('audit-log', [AuditLogController::class, 'index'])->name('audit-logs.index');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Route Guru CBT (PRD v2 §4.3 / §5.2) — bank soal + lihat hasil mapelnya.
+| Buat ujian, monitoring, kartu, pengaturan tetap milik admin di grup atas.
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'role:guru', 'throttle:admin'])
+    ->prefix('guru')
+    ->name('guru.')
+    ->group(function () {
+        // Bank soal (baca + kelola butir, tanpa hapus batch milik admin lain)
+        Route::get('bank', [BankController::class, 'index'])->name('bank.index');
+        Route::get('bank/{batch}', [BankController::class, 'show'])->name('bank.show');
+        Route::get('bank/{batch}/soal/tambah', [BankController::class, 'createQuestion'])->name('bank.questions.create');
+        Route::post('bank/{batch}/soal', [BankController::class, 'storeQuestion'])->name('bank.questions.store');
+        Route::get('bank/{batch}/soal/{question}/ubah', [BankController::class, 'editQuestion'])->name('bank.questions.edit');
+        Route::put('bank/{batch}/soal/{question}', [BankController::class, 'updateQuestion'])->name('bank.questions.update');
+
+        // Hasil ujian (baca-saja; filter mapel sendiri di controller — P7)
+        Route::get('hasil', [HubController::class, 'hasil'])->name('results.index');
+        Route::get('hasil/cetak', [HubController::class, 'hasilPrint'])->name('results.print');
+        Route::get('hasil/unduh', [HubController::class, 'hasilExport'])->name('results.export');
+    });

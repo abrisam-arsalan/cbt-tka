@@ -1,11 +1,12 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 
 const props = defineProps({
     title: String,
     classes: { type: Array, default: () => [] },
+    subjects: { type: Array, default: () => [] },
     columns: { type: Array, default: () => [] },
     importErrors: { type: Array, default: () => [] },
 });
@@ -14,10 +15,21 @@ const fileInput = ref(null);
 const fileName = ref('');
 
 const form = useForm({
-    name: '',
-    class_id: '',
+    subject_id: '',
+    subject_code: '',
+    tingkat: '',
     file: null,
 });
+
+// Kode mapel mengikuti pilihan dropdown (huruf+angka, maks 8).
+const selectedSubject = computed(() =>
+    props.subjects.find((s) => String(s.id) === String(form.subject_id)) ?? null,
+);
+
+const onSubjectChange = () => {
+    const s = selectedSubject.value;
+    form.subject_code = s ? String(s.kode ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) : '';
+};
 
 const onFileChange = (event) => {
     const selected = event.target.files?.[0] ?? null;
@@ -26,6 +38,14 @@ const onFileChange = (event) => {
 };
 
 const submit = () => {
+    if (!form.subject_id) {
+        alert('Pilih mata pelajaran dari portal terlebih dahulu.');
+        return;
+    }
+    if (!form.tingkat) {
+        alert('Pilih kelas (7, 8, atau 9) terlebih dahulu.');
+        return;
+    }
     if (!form.file) {
         alert('Pilih file CSV, XLSX, atau ZIP terlebih dahulu.');
         return;
@@ -53,29 +73,39 @@ const submit = () => {
             <p class="mt-1 text-sm text-slate-500">Satu file boleh berisi SEMUA jenis soal. Kolom <span class="font-mono">jenis</span> menentukan tipe tiap baris.</p>
 
             <div class="mt-5 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-                <!-- Kolom template -->
-                <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Kolom template</p>
-                <div class="mb-4 flex flex-wrap gap-1.5">
-                    <span v-for="col in columns" :key="col" class="rounded-md bg-slate-100 px-2 py-1 font-mono text-xs text-slate-600">{{ col }}</span>
-                </div>
-                <p class="mb-4 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">
-                    Nilai <span class="font-mono">jenis</span>: <span class="font-mono">pg</span>, <span class="font-mono">pgk</span>, <span class="font-mono">boolean</span>, <span class="font-mono">matching</span>. Kolom <span class="font-mono">kelas</span> diisi nama kelas yang sudah ada (opsional).
-                </p>
-
                 <form @submit.prevent="submit" class="space-y-4">
                     <div>
                         <label class="mb-1 block text-sm font-semibold text-slate-700">Mata Pelajaran</label>
-                        <input v-model="form.name" type="text" required placeholder="mis. Matematika" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none" />
-                        <p class="mt-1 text-xs text-slate-400">Tanggal otomatis ditambahkan di belakang nama (mis. "Matematika 2609").</p>
-                        <p v-if="form.errors.name" class="mt-1 text-xs text-danger-600">{{ form.errors.name }}</p>
+                        <select
+                            v-model="form.subject_id"
+                            required
+                            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
+                            @change="onSubjectChange"
+                        >
+                            <option value="" disabled>— pilih dari portal —</option>
+                            <option v-for="s in subjects" :key="s.id" :value="s.id">
+                                {{ s.nama }}{{ s.kode ? ` (${s.kode})` : '' }}
+                            </option>
+                        </select>
+                        <p v-if="!subjects.length" class="mt-1 text-xs text-amber-600">
+                            Daftar mapel portal tidak tersedia (portal mati atau token belum diset) — hubungi admin sistem.
+                        </p>
+                        <p v-if="form.errors.subject_id" class="mt-1 text-xs text-danger-600">{{ form.errors.subject_id }}</p>
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-sm font-semibold text-slate-700">Kelas <span class="font-normal text-slate-400">(opsional)</span></label>
-                        <select v-model="form.class_id" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
-                            <option value="">— tanpa kelas / campuran —</option>
-                            <option v-for="c in classes" :key="c.value" :value="c.value">{{ c.label }}</option>
+                        <label class="mb-1 block text-sm font-semibold text-slate-700">Kelas</label>
+                        <select
+                            v-model="form.tingkat"
+                            required
+                            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
+                        >
+                            <option value="" disabled>— pilih kelas —</option>
+                            <option value="7">Kelas 7</option>
+                            <option value="8">Kelas 8</option>
+                            <option value="9">Kelas 9</option>
                         </select>
+                        <p v-if="form.errors.tingkat" class="mt-1 text-xs text-danger-600">{{ form.errors.tingkat }}</p>
                     </div>
 
                     <div>

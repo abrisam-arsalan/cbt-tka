@@ -37,10 +37,16 @@ class QuestionBankImportService
 
     /**
      * Nama batch dengan suffix tanggal YYMM (mis. "Matematika 2609").
+     * Nama OTOMATIS berpola KODE_KELAS_DDMMYYYY (mis. "TIK_7_28102026")
+     * sudah final — suffix tidak ditambahkan lagi.
      */
     public function buildBatchName(string $name, ?\DateTimeInterface $when = null): string
     {
         $name = trim($name);
+        if (preg_match('/^[A-Z0-9]{1,8}_[789]_\d{8}$/', $name)) {
+            return $name;
+        }
+
         $when ??= now();
 
         return $name.' '.$when->format('ym');

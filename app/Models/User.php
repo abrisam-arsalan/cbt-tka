@@ -71,6 +71,11 @@ class User extends Authenticatable
         return $this->role === UserRole::Siswa;
     }
 
+    public function isGuru(): bool
+    {
+        return $this->role === UserRole::Guru;
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
@@ -84,6 +89,11 @@ class User extends Authenticatable
     public function scopeSiswa(Builder $query): Builder
     {
         return $query->where('role', UserRole::Siswa->value);
+    }
+
+    public function scopeGuru(Builder $query): Builder
+    {
+        return $query->where('role', UserRole::Guru->value);
     }
 
     /**

@@ -22,6 +22,7 @@ class UserController extends Controller
         private readonly AuditLogService $audit,
         private readonly BulkImportService $imports,
         private readonly PinService $pins,
+        private readonly \App\Services\StudentSyncService $syncService,
     ) {}
 
     public function index(Request $request): Response
@@ -74,75 +75,54 @@ class UserController extends Controller
     }
 
     /**
-     * Impor akun siswa dari file CSV/XLSX.
+     * Sinkronkan data siswa aktif dari Portal Panglima ke CBT.
      */
-    public function import(Request $request): RedirectResponse
+    public function sync(): RedirectResponse
     {
-        $request->validate([
-            'file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls', 'max:5120'],
-        ], [
-            'file.mimes' => 'File harus berformat CSV atau XLSX.',
-            'file.max' => 'Ukuran file maksimum 5 MB.',
-        ]);
+        $result = $this->syncService->sync();
 
-        $result = $this->imports->importStudents($request->file('file'), $request->user());
-
-        if ($result['errors'] !== []) {
-            $request->session()->put('import_errors', $result['errors']);
+        if (!empty($result['errors'])) {
+            return redirect()
+                ->route('admin.users.index')
+                ->with('warning', 'Sinkronisasi selesai dengan catatan: ' . implode('; ', $result['errors']));
         }
 
-        $message = $result['imported'] > 0
-            ? "{$result['imported']} akun siswa berhasil ditambahkan"
-               .($result['errors'] !== [] ? ', '.count($result['errors'])." baris dilewati (lihat detail)." : '.')
-            : 'Tidak ada akun yang ditambahkan. Periksa kembali file Anda.';
+        if ($result['total'] === 0) {
+            return redirect()
+                ->route('admin.users.index')
+                ->with('warning', 'Tidak ada data siswa ditemukan di Portal Panglima.');
+        }
 
         return redirect()
             ->route('admin.users.index')
-            ->with($result['imported'] > 0 ? 'success' : 'warning', $message);
+            ->with('success', "Berhasil mensinkronkan {$result['synced']} akun siswa dari Portal Panglima (Baru: {$result['created']}, Diperbarui: {$result['updated']}).");
     }
 
-    public function create(): Response
+    /**
+     * Impor akun siswa dinonaktifkan di CBT — dikelola dari Portal Panglima.
+     */
+    public function import(Request $request): RedirectResponse
     {
-        return Inertia::render('Admin/Users/Form', [
-            'title' => 'Tambah Siswa',
-            'edit' => false,
-            'user' => null,
-            'classes' => $this->classOptions(),
-            'roleOptions' => UserRole::options(),
-        ]);
+        return redirect()
+            ->route('admin.users.index')
+            ->with('warning', 'Impor data siswa dilakukan terpusat melalui Portal Panglima. Silakan unggah di menu Impor Portal Panglima.');
+    }
+
+    /**
+     * Tambah siswa dinonaktifkan di CBT — dikelola dari Portal Panglima.
+     */
+    public function create(): RedirectResponse
+    {
+        return redirect()
+            ->route('admin.users.index')
+            ->with('warning', 'Penambahan akun siswa dikelola terpusat dari Portal Panglima. Silakan gunakan tombol "Sinkronkan Siswa dari Portal".');
     }
 
     public function store(StoreUserRequest $request): RedirectResponse
     {
-        $data = $this->userData($request);
-
-        // PIN kosong => digenerate otomatis agar setiap siswa punya PIN unik
-        // yang tercetak di kartu ujiannya.
-        $pin = filled($data['password'] ?? null)
-            ? $data['password']
-            : $this->pins->generate($data['username']);
-
-        // Username jangan sampai sama dengan password.
-        if ($pin === $data['username']) {
-            $pin = $this->pins->generate($data['username']);
-        }
-
-        unset($data['password']);
-
-        $user = new User($data);
-        $this->pins->apply($user, $pin);
-        $user->save();
-
-        $this->audit->log(
-            action: 'user.created',
-            subject: $user,
-            description: "Siswa {$user->username} dibuat"
-                .(filled($request->input('password')) ? '.' : ' dengan PIN otomatis.'),
-        );
-
         return redirect()
             ->route('admin.users.index')
-            ->with('success', "Siswa {$user->name} berhasil dibuat. PIN login: {$pin} — pastikan tercetak di kartu ujian.");
+            ->with('warning', 'Penambahan akun siswa dikelola terpusat dari Portal Panglima. Silakan unggah di Portal lalu lakukan sinkronisasi.');
     }
 
     public function edit(User $user): Response

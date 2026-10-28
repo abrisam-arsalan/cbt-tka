@@ -1,7 +1,7 @@
 <script setup>
+import { ref } from 'vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import ImportPanel from '@/Admin/Shared/ImportPanel.vue';
 
 const props = defineProps({
     title: String,
@@ -13,6 +13,19 @@ const props = defineProps({
 
 const btnPrimarySm = 'bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
 const btnDangerSm = 'bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm transition duration-150 flex items-center justify-center text-center whitespace-nowrap';
+
+const syncing = ref(false);
+
+const syncFromPortal = () => {
+    if (confirm('Sinkronkan seluruh data siswa aktif dari Portal Panglima ke Ujian?')) {
+        syncing.value = true;
+        router.post(route('admin.users.sync'), {}, {
+            onFinish: () => {
+                syncing.value = false;
+            },
+        });
+    }
+};
 
 const filterForm = useForm({
     search: props.filters?.search ?? '',
@@ -36,11 +49,33 @@ const destroy = (user) => {
         <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h2 class="text-xl font-bold text-slate-900">Data Siswa</h2>
-                <p class="text-sm text-slate-500">Kelola akun peserta didik.</p>
+                <p class="text-sm text-slate-500">Kelola akun peserta didik yang disinkronkan dari Portal Panglima.</p>
             </div>
-            <Link :href="route('admin.users.create')" class="flex h-11 items-center justify-center rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white shadow-sm shadow-brand-600/25 transition hover:bg-brand-700">
-                + Tambah Siswa
-            </Link>
+            <button
+                type="button"
+                @click="syncFromPortal"
+                :disabled="syncing"
+                class="flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white shadow-sm shadow-brand-600/25 transition hover:bg-brand-700 disabled:opacity-50"
+            >
+                <svg v-if="syncing" class="h-4 w-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                <span v-if="syncing">Mensinkronkan...</span>
+                <span v-else>🔄 Sinkronkan Siswa dari Portal</span>
+            </button>
+        </div>
+
+        <div class="mb-4 rounded-xl border border-sky-100 bg-sky-50/70 p-4 text-xs text-sky-800">
+            <div class="flex items-start gap-2">
+                <span class="text-base">ℹ️</span>
+                <div>
+                    <p class="font-semibold text-sky-900">Data Siswa Dikelola Terpusat di Portal Panglima</p>
+                    <p class="mt-0.5 text-sky-700">
+                        Sesuai konfigurasi sistem, penambahan dan impor data siswa dilakukan terpusat melalui <b>Portal Panglima</b> (Nama, NISN sekaligus Username, Kelas, Rombel, PIN). Gunakan tombol <b>"Sinkronkan Siswa dari Portal"</b> di atas untuk menyinkronkan data terbaru ke CBT.
+                    </p>
+                </div>
+            </div>
         </div>
 
         <!-- Filter -->
@@ -57,14 +92,6 @@ const destroy = (user) => {
             />
             <button type="submit" :class="btnPrimarySm">Filter</button>
         </form>
-
-        <ImportPanel
-            template-route="admin.users.template"
-            import-route="admin.users.import"
-            :columns="['username', 'nama', 'nisn', 'email', 'kelas', 'password', 'aktif']"
-            note="Kolom &quot;username&quot; dan &quot;nama&quot; wajib. Kolom &quot;kelas&quot; diisi nama kelas yang sudah ada. Jika &quot;password&quot; kosong, memakai default &quot;siswa123&quot;. Semua akun dibuat sebagai Siswa."
-            :errors="importErrors"
-        />
 
         <div class="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
             <table class="w-full text-sm">
