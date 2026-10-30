@@ -31,39 +31,34 @@ onMounted(() => {
         </div>
 
         <div class="print-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div v-for="card in cards" :key="card.username + card.student_name" class="exam-card p-4">
-                <div class="mb-2 flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-bold text-slate-800">{{ card.school_name }}</p>
-                        <p class="text-xs text-slate-500">{{ card.school_city ? card.school_city + ' · ' : '' }}Kartu Ujian</p>
+            <div v-for="card in cards" :key="card.username + card.student_name" class="exam-card">
+                <!-- Kepala kartu: pita brand -->
+                <div class="exam-card-head">
+                    <img v-if="card.logo_url" :src="card.logo_url" class="exam-card-logo" alt="logo" />
+                    <div class="exam-card-school">
+                        <p class="exam-card-school-name">{{ card.school_name }}</p>
+                        <p class="exam-card-school-sub">Kartu Ujian</p>
                     </div>
-                    <img v-if="card.logo_url" :src="card.logo_url" class="h-10 w-10 object-contain" alt="logo" />
+                    <span class="exam-card-class">{{ card.class_name }}</span>
                 </div>
 
-                <div class="mb-3">
-                    <p class="text-xs text-slate-400">Nama Siswa</p>
-                    <p class="font-semibold text-slate-900">{{ card.student_name }}</p>
-                    <p class="text-xs text-slate-500">{{ card.class_name }}</p>
-                    <p class="text-xs text-slate-500">{{ card.exam_title }}</p>
-                    <p class="mt-1 text-xs text-slate-400">{{ card.duration_minutes }} menit · {{ card.start_at }}</p>
-                </div>
+                <!-- Identitas siswa -->
+                <p class="exam-card-name">{{ card.student_name }}</p>
+                <p class="exam-card-exam">{{ card.exam_title }} · {{ card.duration_minutes }} mnt · {{ card.start_at }}</p>
 
                 <!-- Akun login: username (NISN) dan PIN dicetak terpisah;
                      PIN angka, username NISN — keduanya berbeda. Token sesi
                      TIDAK dicetak: diumumkan pengawas, berlaku selama ujian. -->
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="rounded-lg border border-slate-300 px-3 py-2 text-center">
-                        <p class="text-xs text-slate-400">Username (NISN)</p>
-                        <p class="font-mono text-sm font-bold text-slate-900">{{ card.username || '—' }}</p>
+                <div class="exam-card-creds">
+                    <div class="exam-card-cred">
+                        <p class="exam-card-cred-label">Username (NISN)</p>
+                        <p class="exam-card-cred-value">{{ card.username || '—' }}</p>
                     </div>
-                    <div class="rounded-lg border border-slate-300 px-3 py-2 text-center">
-                        <p class="text-xs text-slate-400">PIN Login</p>
-                        <p class="font-mono text-sm font-bold text-slate-900">{{ card.login_pin || 'reset PIN' }}</p>
+                    <div class="exam-card-cred exam-card-cred-pin">
+                        <p class="exam-card-cred-label">PIN Login</p>
+                        <p class="exam-card-cred-value">{{ card.login_pin || 'reset PIN' }}</p>
                     </div>
                 </div>
-                <p v-if="card.login_url" class="mt-1 break-all text-center text-[10px] text-slate-400">
-                    Login dari HP/PC: {{ card.login_url }}
-                </p>
             </div>
         </div>
     </div>

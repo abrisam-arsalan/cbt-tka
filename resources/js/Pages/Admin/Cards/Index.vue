@@ -26,35 +26,32 @@ defineProps({
             </Link>
         </div>
 
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div class="preview-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div
                 v-for="card in cards"
                 :key="card.username + card.student_name"
-                class="kartu-container overflow-hidden break-inside-avoid rounded-lg border bg-white p-4 shadow-sm"
+                class="exam-card"
             >
-                <div class="mb-2 flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-bold text-gray-800">{{ card.school_name }}</p>
-                        <p class="text-xs text-gray-500">Kartu Ujian</p>
+                <div class="exam-card-head">
+                    <img v-if="card.logo_url" :src="card.logo_url" class="exam-card-logo" alt="logo" />
+                    <div class="exam-card-school">
+                        <p class="exam-card-school-name">{{ card.school_name }}</p>
+                        <p class="exam-card-school-sub">Kartu Ujian</p>
                     </div>
-                    <img v-if="card.logo_url" :src="card.logo_url" class="h-10 w-10 object-contain" alt="logo" />
+                    <span class="exam-card-class">{{ card.class_name }}</span>
                 </div>
 
-                <div class="space-y-1 text-center">
-                    <p class="font-semibold text-gray-900">{{ card.student_name }}</p>
-                    <p class="text-xs text-gray-500">{{ card.class_name }}</p>
-                    <p class="text-xs text-gray-500">{{ card.exam_title }}</p>
-                    <p class="text-xs text-gray-400">{{ card.duration_minutes }} menit · {{ card.start_at }}</p>
-                </div>
+                <p class="exam-card-name">{{ card.student_name }}</p>
+                <p class="exam-card-exam">{{ card.exam_title }} · {{ card.duration_minutes }} mnt · {{ card.start_at }}</p>
 
-                <div class="mt-2 grid grid-cols-2 gap-2">
-                    <div class="rounded-lg border border-gray-300 px-2 py-1.5 text-center">
-                        <p class="text-[10px] text-gray-400">Username (NISN)</p>
-                        <p class="font-mono text-sm font-bold text-gray-900">{{ card.username || '—' }}</p>
+                <div class="exam-card-creds">
+                    <div class="exam-card-cred">
+                        <p class="exam-card-cred-label">Username (NISN)</p>
+                        <p class="exam-card-cred-value">{{ card.username || '—' }}</p>
                     </div>
-                    <div class="rounded-lg border border-gray-300 px-2 py-1.5 text-center">
-                        <p class="text-[10px] text-gray-400">PIN Login</p>
-                        <p class="font-mono text-sm font-bold text-gray-900">{{ card.login_pin || 'reset PIN' }}</p>
+                    <div class="exam-card-cred exam-card-cred-pin">
+                        <p class="exam-card-cred-label">PIN Login</p>
+                        <p class="exam-card-cred-value">{{ card.login_pin || 'reset PIN' }}</p>
                     </div>
                 </div>
             </div>
@@ -65,22 +62,3 @@ defineProps({
         </div>
     </AdminLayout>
 </template>
-
-<style scoped>
-
-@media print {
-    body {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    .kartu-container {
-        page-break-inside: avoid;
-        break-inside: avoid;
-    }
-
-    .no-print {
-        display: none !important;
-    }
-}
-</style>
